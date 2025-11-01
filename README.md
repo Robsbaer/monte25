@@ -5,9 +5,22 @@ wie einfache Spiele programmiert werden können – mit Unterstützung durch **K
 
 ## 🧩 Projektüberblick
 - Einstieg in Programmierung & Spieleentwicklung
-- Erstellung Quellcode für kleine Browser-Spiele
+- Erstellung von Quellcode für kleine Browser-Spiele
 - Teamarbeit und Kreativität
 - Bewusster Umgang mit KI
+
+## 🌐 Online spielen
+Die Spiele können direkt im Browser gespielt werden:
+- 🎯 **Springender Ball:** https://robsbaer.github.io/monte25/ball.html
+- 👥 **Teamgenerator:** https://robsbaer.github.io/monte25/teams.html
+
+Die weiteren, von Euch entwickelten Spiele gibt es hier:
+- 🏠 **Projektseite:** https://robsbaer.github.io/monte25/
+
+## 📚 Dokumente
+- 📊 **PowerPoint-Folien:** https://robsbaer.github.io/monte25/Dokumente/Folien.pptx
+
+**Repository (Quellcode):** https://github.com/robsbaer/monte25
 
 ## 📁 Projektstruktur
 ```
@@ -41,3 +54,6 @@ KI kann helfen, aber sie ist nicht perfekt:
 **Robert Bär**  
 Projektleitung – *Spieleprogrammierung mit KI*  
 📧 robsmail@gmx.de
+
+🏠 **Projektseite (mit den entwickelten Spielen):** 
+https://robsbaer.github.io/monte25/

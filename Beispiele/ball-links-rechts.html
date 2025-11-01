@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+    <script>
+      let x = 300, y = 50, vx = 0, vy = 0, g = 0.6;
+      let radius = 25, restitution = 0.8; // Rückprallfaktor
+      let speed = 5; // Geschwindigkeit für Links/Rechts-Bewegung
+
+      function setup() {
+        createCanvas(600, 400);
+      }
+
+      function draw() {
+        background(240);
+        // Physik
+        vy += g;
+        y  += vy;
+        x  += vx;
+
+        // Boden-Kollision
+        if (y + radius > height) {
+          y = height - radius;
+          vy = -vy * restitution;
+        }
+
+        // Wand-Kollision (links/rechts)
+        if (x - radius < 0) {
+          x = radius;
+          vx = 0;
+        }
+        if (x + radius > width) {
+          x = width - radius;
+          vx = 0;
+        }
+
+        // Zeichnen
+        circle(x, y, radius*2);
+
+        // kleine Anleitung
+        text("Leertaste = Sprung | Pfeiltasten = Bewegung", 10, 20);
+      }
+
+      function keyPressed() {
+        if (keyCode === 32) vy = -10;        // Space
+        if (keyCode === UP_ARROW) vy = -14;  // stärker
+        if (keyCode === LEFT_ARROW) vx = -speed;  // Links
+        if (keyCode === RIGHT_ARROW) vx = speed;  // Rechts
+      }
+
+      function keyReleased() {
+        if (keyCode === LEFT_ARROW || keyCode === RIGHT_ARROW) {
+          vx = 0;  // Horizontale Bewegung stoppen
+        }
+      }
+    </script>
+  </body>
+</html>

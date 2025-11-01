@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+    <script>
+      // Y-Position der Kugel
+      let y = 50;
+      // Vertikale Geschwindigkeit der Kugel
+      let vy = 0;
+      // Anziehungskraft
+      let g = 0.6;
+      // Radius der Kugel
+      let radius = 25;
+      // Rückprallfaktor
+      let restitution = 0.8;
+
+      // Erstelle die Oberfläche
+      function setup() {
+        // Erstelle eine Oberfläche mit 600x400 Pixeln
+        createCanvas(600, 400);
+      }
+
+      // Zeichne die Kugel
+      function draw() {
+        background("gray");
+        // Berechne die Physik
+        vy += g;
+        y  += vy;
+
+        // Behandle Boden-Kollision
+        if (y + radius > height) {
+          y = height - radius;
+          vy = -vy * restitution;
+        }
+
+        // Zeichne die Kugel
+        fill("white");  // Weiß
+        circle(width/2, y, radius*2);
+
+        // kleine Anleitung
+        fill("black");  // Text in Schwarz
+        text("Leertaste = Sprung | Pfeil hoch = hoher Sprung", 10, 20);
+      }
+
+      // Taste gedrückt-Funktion
+      function keyPressed() {
+        if (keyCode === 32) vy = -10;        // Leertaste = Sprung
+        if (keyCode === UP_ARROW) vy = -14;  // Pfeil hoch = hoher Sprung
+      }
+    </script>
+  </body>
+</html>

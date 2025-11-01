@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Jump'n'Run Spiel</title>
+  </head>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+    <script>
+      // Spieler-Eigenschaften
+      let player = {
+        x: 100,           // X-Position
+        y: 0,             // Y-Position
+        width: 30,        // Breite
+        height: 40,       // Höhe
+        vx: 0,            // Horizontale Geschwindigkeit
+        vy: 0,            // Vertikale Geschwindigkeit
+        speed: 5,         // Laufgeschwindigkeit
+        jumpPower: -12,   // Sprungkraft
+        onGround: false   // Steht auf dem Boden?
+      };
+
+      // Physik-Eigenschaften
+      let gravity = 0.6;
+      let groundLevel;
+
+      // Tastenstatus
+      let keys = {
+        left: false,
+        right: false
+      };
+
+      // Erstelle die Oberfläche
+      function setup() {
+        createCanvas(800, 400);
+        groundLevel = height - 50; // Boden ist 50 Pixel vom unteren Rand
+        player.y = groundLevel - player.height;
+      }
+
+      // Hauptspiel-Schleife
+      function draw() {
+        // Hintergrund
+        background(135, 206, 235); // Himmelblau
+        
+        // Zeichne Boden
+        fill(34, 139, 34); // Grün
+        rect(0, groundLevel, width, height - groundLevel);
+        
+        // Bewege Spieler basierend auf Tasteneingaben
+        if (keys.left) {
+          player.vx = -player.speed;
+        } else if (keys.right) {
+          player.vx = player.speed;
+        } else {
+          player.vx = 0;
+        }
+        
+        // Wende Physik an
+        player.vy += gravity; // Schwerkraft
+        player.x += player.vx; // Horizontale Bewegung
+        player.y += player.vy; // Vertikale Bewegung
+        
+        // Begrenze Spieler auf Leinwand (Links/Rechts)
+        if (player.x < 0) {
+          player.x = 0;
+        }
+        if (player.x + player.width > width) {
+          player.x = width - player.width;
+        }
+        
+        // Boden-Kollision
+        if (player.y + player.height >= groundLevel) {
+          player.y = groundLevel - player.height;
+          player.vy = 0;
+          player.onGround = true;
+        } else {
+          player.onGround = false;
+        }
+        
+        // Zeichne Spieler (Strichmännchen)
+        drawPlayer(player.x, player.y);
+        
+        // Anleitung
+        fill(0);
+        textSize(16);
+        text("← → Pfeiltasten: Laufen | ↑ Pfeil hoch: Springen", 10, 25);
+      }
+
+      // Zeichne die Spielfigur als Strichmännchen
+      function drawPlayer(x, y) {
+        push();
+        translate(x, y);
+        
+        // Körper
+        stroke(0);
+        strokeWeight(3);
+        fill(255, 200, 100); // Hautfarbe
+        
+        // Kopf
+        circle(15, 8, 16);
+        
+        // Körper (Linie)
+        line(15, 16, 15, 28);
+        
+        // Arme
+        line(15, 20, 8, 24);
+        line(15, 20, 22, 24);
+        
+        // Beine
+        line(15, 28, 10, 40);
+        line(15, 28, 20, 40);
+        
+        pop();
+      }
+
+      // Tastendruck-Ereignis
+      function keyPressed() {
+        if (keyCode === LEFT_ARROW) {
+          keys.left = true;
+        }
+        if (keyCode === RIGHT_ARROW) {
+          keys.right = true;
+        }
+        if (keyCode === UP_ARROW && player.onGround) {
+          player.vy = player.jumpPower; // Springe nur wenn auf dem Boden
+        }
+        
+        // Alternative: Leertaste für Sprung
+        if (keyCode === 32 && player.onGround) {
+          player.vy = player.jumpPower;
+        }
+      }
+
+      // Taste losgelassen-Ereignis
+      function keyReleased() {
+        if (keyCode === LEFT_ARROW) {
+          keys.left = false;
+        }
+        if (keyCode === RIGHT_ARROW) {
+          keys.right = false;
+        }
+      }
+    </script>
+  </body>
+</html>
+

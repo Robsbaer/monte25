@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <script src="https://unpkg.com/kaboom/dist/kaboom.js"></script>
+    <script>
+      kaboom({
+        width: 800,
+        height: 600,
+      });
+      setGravity(1200);
+
+      // Hintergrund - Himmel (blau)
+      add([
+        pos(0, 0),
+        rect(800, 450),
+        color(135, 206, 235),
+        z(-20),
+      ]);
+
+      // Hintergrund - Boden (grün)
+      add([
+        pos(0, 450),
+        rect(800, 150),
+        color(34, 139, 34),
+        z(-20),
+      ]);
+
+      // Sonne (Dekoration, nicht betretbar)
+      const sun = add([
+        pos(680, 60),
+        circle(40),
+        area(),
+        color(255, 220, 0),
+        z(-15),
+        "sun",
+      ]);
+
+      let sunTouched = false;
+      let sunFaceCreated = false;
+
+      // Wolken (Plattformen zum Draufspringen)
+      add([
+        pos(100, 80),
+        rect(60, 25),
+        area(),
+        body({ isStatic: true }),
+        color(255, 255, 255),
+        z(0),
+      ]);
+
+      add([
+        pos(320, 120),
+        rect(70, 30),
+        area(),
+        body({ isStatic: true }),
+        color(255, 255, 255),
+        z(0),
+      ]);
+
+      add([
+        pos(550, 90),
+        rect(60, 25),
+        area(),
+        body({ isStatic: true }),
+        color(255, 255, 255),
+        z(0),
+      ]);
+
+      // Spieler - Würfel mit Gesicht
+      const player = add([
+        pos(100, 0),
+        rect(32, 32),  // Würfel
+        area(),
+        body(),     // aktiviert Schwerkraft & Bodencheck
+        color(255, 100, 100),  // rosa/roter Würfel
+        z(0),
+      ]);
+
+      // Linkes Auge
+      player.add([
+        pos(8, 10),
+        circle(4),
+        color(255, 255, 255),  // weiß
+        z(1),
+      ]);
+
+      // Linke Pupille
+      player.add([
+        pos(9, 11),
+        circle(2),
+        color(0, 0, 0),  // schwarz
+        z(2),
+      ]);
+
+      // Rechtes Auge
+      player.add([
+        pos(20, 10),
+        circle(4),
+        color(255, 255, 255),  // weiß
+        z(1),
+      ]);
+
+      // Rechte Pupille
+      player.add([
+        pos(21, 11),
+        circle(2),
+        color(0, 0, 0),  // schwarz
+        z(2),
+      ]);
+
+      // Mund (lächelnd)
+      player.add([
+        pos(10, 22),
+        rect(12, 3),
+        color(100, 50, 50),  // dunkler für den Mund
+        z(1),
+      ]);
+
+      // Linke Mundwinkel-Erhöhung (für Lächeln)
+      player.add([
+        pos(8, 20),
+        rect(3, 3),
+        color(100, 50, 50),
+        z(1),
+      ]);
+
+      // Rechte Mundwinkel-Erhöhung (für Lächeln)
+      player.add([
+        pos(21, 20),
+        rect(3, 3),
+        color(100, 50, 50),
+        z(1),
+      ]);
+
+      // KI-Figur (läuft und springt selbstständig)
+      const aiPlayer = add([
+        pos(400, 0),
+        rect(28, 28),
+        area(),
+        body(),
+        color(100, 200, 100),  // grüner Würfel
+        z(0),
+        "ai",
+      ]);
+
+      // KI-Gesicht - Linkes Auge
+      aiPlayer.add([
+        pos(7, 9),
+        circle(3),
+        color(255, 255, 255),
+        z(1),
+      ]);
+
+      // KI - Linke Pupille
+      aiPlayer.add([
+        pos(8, 10),
+        circle(1.5),
+        color(0, 0, 0),
+        z(2),
+      ]);
+
+      // KI-Gesicht - Rechtes Auge
+      aiPlayer.add([
+        pos(18, 9),
+        circle(3),
+        color(255, 255, 255),
+        z(1),
+      ]);
+
+      // KI - Rechte Pupille
+      aiPlayer.add([
+        pos(19, 10),
+        circle(1.5),
+        color(0, 0, 0),
+        z(2),
+      ]);
+
+      // KI - Mund
+      aiPlayer.add([
+        pos(9, 19),
+        rect(10, 2),
+        color(50, 100, 50),
+        z(1),
+      ]);
+
+      // KI Bewegungsvariablen
+      let aiDirection = 1; // 1 = rechts, -1 = links
+      let aiJumpTimer = 0;
+
+      // Boden (weißer Strich)
+      add([
+        pos(0, 540),
+        rect(800, 40),
+        area(),
+        body({ isStatic: true }),
+        color(255, 255, 255),
+        z(0),
+      ]);
+
+      // Orangene Plattformen (zum Draufspringen)
+      add([
+        pos(150, 420),
+        rect(100, 20),
+        area(),
+        body({ isStatic: true }),
+        color(255, 165, 0),
+        z(0),
+      ]);
+
+      add([
+        pos(400, 380),
+        rect(120, 20),
+        area(),
+        body({ isStatic: true }),
+        color(255, 165, 0),
+        z(0),
+      ]);
+
+      add([
+        pos(600, 320),
+        rect(90, 20),
+        area(),
+        body({ isStatic: true }),
+        color(255, 165, 0),
+        z(0),
+      ]);
+
+      add([
+        pos(250, 260),
+        rect(80, 20),
+        area(),
+        body({ isStatic: true }),
+        color(255, 165, 0),
+        z(0),
+      ]);
+
+      add([
+        pos(500, 200),
+        rect(100, 20),
+        area(),
+        body({ isStatic: true }),
+        color(255, 165, 0),
+        z(0),
+      ]);
+
+      // Steuerung
+      const SPEED = 200;
+
+      onKeyPress("space", () => {
+        if (player.isGrounded()) player.jump(650);
+      });
+
+      onKeyDown("left", () => {
+        player.move(-SPEED, 0);
+      });
+
+      onKeyDown("right", () => {
+        player.move(SPEED, 0);
+      });
+
+      // Kollision mit Sonne erkennen
+      player.onCollide("sun", () => {
+        if (!sunFaceCreated) {
+          sunTouched = true;
+          sunFaceCreated = true;
+
+          // Linkes Auge der Sonne
+          add([
+            pos(668, 55),
+            circle(5),
+            color(0, 0, 0),
+            z(-14),
+          ]);
+
+          // Rechtes Auge der Sonne
+          add([
+            pos(692, 55),
+            circle(5),
+            color(0, 0, 0),
+            z(-14),
+          ]);
+
+          // Lächelnder Mund (gebogen)
+          add([
+            pos(665, 68),
+            rect(30, 4),
+            color(0, 0, 0),
+            z(-14),
+          ]);
+
+          // Linker Mundwinkel
+          add([
+            pos(662, 65),
+            rect(4, 4),
+            color(0, 0, 0),
+            z(-14),
+          ]);
+
+          // Rechter Mundwinkel
+          add([
+            pos(694, 65),
+            rect(4, 4),
+            color(0, 0, 0),
+            z(-14),
+          ]);
+        }
+      });
+
+      // KI-Logik Update
+      onUpdate(() => {
+        // Spieler Respawn
+        if (player.pos.y > 620) {
+          player.pos = vec2(100, 0);
+        }
+
+        // KI Respawn
+        if (aiPlayer.pos.y > 620) {
+          aiPlayer.pos = vec2(400, 0);
+        }
+
+        // KI Bewegung (konstante Geschwindigkeit)
+        const AI_SPEED = 120;
+        aiPlayer.move(aiDirection * AI_SPEED, 0);
+
+        // An den Rändern umdrehen
+        if (aiPlayer.pos.x < 20) {
+          aiDirection = 1; // nach rechts
+        }
+        if (aiPlayer.pos.x > 780) {
+          aiDirection = -1; // nach links
+        }
+
+        // Zufälliges Springen
+        aiJumpTimer++;
+        if (aiJumpTimer > 60 && aiPlayer.isGrounded()) {
+          // Alle ~1 Sekunde (60 Frames) springen
+          if (Math.random() > 0.5) { // 50% Chance
+            aiPlayer.jump(600);
+            aiJumpTimer = 0;
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

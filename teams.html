@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Generator</title>
+    <style>
+        /* ========== STYLING (Design) ========== */
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        #spielfeld {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            overflow: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        /* So sieht ein einzelner Name aus */
+        .name {
+            position: absolute;
+            padding: 15px 25px;
+            background: white;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #667eea;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .name:hover {
+            transform: scale(1.1);
+        }
+
+        /* Team-Label (rot, über den Namen) */
+        .team-label {
+            position: absolute;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            white-space: nowrap;
+        }
+        
+        /* Magic Button */
+        .magic-button {
+            background: rgba(255, 255, 255, 0.3);
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            padding: 0;
+        }
+        
+        .magic-button:hover {
+            background: rgba(255, 255, 255, 0.5);
+            transform: rotate(180deg) scale(1.1);
+        }
+        
+        .magic-button:active {
+            transform: rotate(180deg) scale(0.9);
+        }
+
+        /* Button Styling */
+        #button-bereich {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        button:active {
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Team Generator 🎯</h1>
+    
+    <!-- Hier fliegen die Namen herum -->
+    <div id="spielfeld"></div>
+    
+    <!-- Hier ist der Button -->
+    <div id="button-bereich">
+        <button onclick="teamsZusammenstellen()">Teams bilden!</button>
+    </div>
+
+    <script>
+        // ========================================================
+        // 1️⃣ EINGABEN: Hier stehen alle Namen
+        // ========================================================
+        const alleNamen = [
+            "Demid", "Mila", "Lias", "Benjamin",
+            "Levi", "Simon", "Louisa", "Mathilda"
+        ];
+        
+        // Teamnamen
+        const teamnamen = [
+            // Gaming & Streaming inspiriert
+            "No Lag Squad", "GG Champions", "Streamer Elite", "Victory Royale",
+            "Level Up Legends", "Boss Battle Crew", "Respawn Heroes", "Epic Win Team",
+            "Speedrun Masters", "Achievement Unlocked", "PvP Profis", "Co-Op Kings",
+            // Social Media & Modern
+            "Viral Vibes", "Trending Topic", "Content Creators", "Influencer Squad",
+            "Main Character Energy", "No Cap Team", "Vibe Check", "Sigma Squad",
+            // Popkultur & Film
+            "Avengers 2.0", "Jedi Academy", "Guardians United", "Clone Force",
+            "Multiverse Masters", "Marvel Squad", "Infinity Team", "Hero Alliance",
+            // Sport & Action
+            "All Stars", "Champion League", "MVP Squad", "Game Changers",
+            "Goal Getters", "Fast Break", "Home Run Heroes", "Slam Dunk Crew",
+            // Tech & Innovation
+            "Beta Testers", "Next Gen", "Algorithm Aces", "Digital Natives",
+            "Cloud Champions", "Wi-Fi Warriors", "Code Breakers", "Data Legends",
+            // Kreativ & Cool
+            "Mission Possible", "No Limit Crew", "Unstoppable Force", "Power Players",
+            "Elite Squad", "Victory Lane", "Top Tier", "Supreme Team",
+            "Legendary Duo", "Ultimate Alliance", "Prime Time", "Master Class"
+        ];
+
+        // ========================================================
+        // 2️⃣ HAUPTLOGIK: Was beim Start passiert
+        // ========================================================
+        
+        let alleNameElemente = {}; // Speichert alle Namen-Elemente
+        let animationLaeuft = true; // Steuert die Animation
+        let aktuelleTeams = []; // Speichert die aktuellen Teams
+        
+        function programmeStarten() {
+            // Variable: Spielfeld finden
+            const spielfeld = document.getElementById('spielfeld');
+            
+            // Schleife: Für jeden Namen ein Element erstellen
+            alleNamen.forEach(name => {
+                const nameElement = document.createElement('div');
+                nameElement.className = 'name';
+                nameElement.textContent = name;
+                spielfeld.appendChild(nameElement);
+                
+                // Namen speichern, damit wir sie später finden können
+                alleNameElemente[name] = nameElement;
+                
+                // Funktion: Namen animieren lassen
+                namenAnimieren(nameElement, name);
+            });
+        }
+
+        // ========================================================
+        // 3️⃣ VERARBEITUNG: Was passiert beim Button-Klick
+        // ========================================================
+        
+        function teamsZusammenstellen() {
+            // Animation stoppen
+            animationLaeuft = false;
+            
+            // Namen mischen
+            const gemischteNamen = arrayMischen(alleNamen);
+            aktuelleTeams = gemischteNamen;
+            
+            // Teams anzeigen (Hilfsmethode)
+            teamsAnzeigen(gemischteNamen);
+        }
+
+        // ========================================================
+        // 4️⃣ HILFSFUNKTIONEN (Technische Details)
+        // ========================================================
+        
+        // Diese Funktion lässt einen Namen durch den Raum fliegen
+        function namenAnimieren(element, name) {
+            // Zufällige Startposition
+            let x = zufallsZahl(0, window.innerWidth - 150);
+            let y = zufallsZahl(50, 400);
+            
+            // Zufällige Bewegungsrichtung
+            let geschwindigkeitX = zufallsZahl(-2, 2);
+            let geschwindigkeitY = zufallsZahl(-2, 2);
+            
+            element.style.left = x + 'px';
+            element.style.top = y + 'px';
+            
+            // Position speichern
+            element.aktuelleX = x;
+            element.aktuelleY = y;
+            
+            // Animation: Namen bewegen sich immer wieder
+            function bewegen() {
+                // Nur bewegen, wenn Animation läuft
+                if (!animationLaeuft) {
+                    return;
+                }
+                
+                x += geschwindigkeitX;
+                y += geschwindigkeitY;
+                
+                // An den Wänden abprallen
+                if (x <= 0 || x >= window.innerWidth - 150) {
+                    geschwindigkeitX = -geschwindigkeitX;
+                }
+                if (y <= 0 || y >= 450) {
+                    geschwindigkeitY = -geschwindigkeitY;
+                }
+                
+                element.style.left = x + 'px';
+                element.style.top = y + 'px';
+                element.aktuelleX = x;
+                element.aktuelleY = y;
+                
+                requestAnimationFrame(bewegen);
+            }
+            
+            bewegen();
+        }
+        
+        // Hilfsfunktion: Namen zu einer Position fliegen lassen
+        function zuPositionFliegen(element, zielX, zielY, callback) {
+            let startX = element.aktuelleX;
+            let startY = element.aktuelleY;
+            let startZeit = Date.now();
+            let dauer = 1000; // 1 Sekunde
+            
+            function animieren() {
+                let vergangeneZeit = Date.now() - startZeit;
+                let fortschritt = Math.min(vergangeneZeit / dauer, 1);
+                
+                // Smooth animation (ease-in-out)
+                let sanfterFortschritt = fortschritt < 0.5
+                    ? 2 * fortschritt * fortschritt
+                    : 1 - Math.pow(-2 * fortschritt + 2, 2) / 2;
+                
+                let aktuelleX = startX + (zielX - startX) * sanfterFortschritt;
+                let aktuelleY = startY + (zielY - startY) * sanfterFortschritt;
+                
+                element.style.left = aktuelleX + 'px';
+                element.style.top = aktuelleY + 'px';
+                
+                if (fortschritt < 1) {
+                    requestAnimationFrame(animieren);
+                } else if (callback) {
+                    callback();
+                }
+            }
+            
+            animieren();
+        }
+        
+        // Hilfsfunktion: Zufallszahl zwischen min und max
+        function zufallsZahl(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+        
+        // Hilfsfunktion: Array mischen (wie Karten mischen)
+        function arrayMischen(array) {
+            const gemischt = [...array];
+            for (let i = gemischt.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [gemischt[i], gemischt[j]] = [gemischt[j], gemischt[i]];
+            }
+            return gemischt;
+        }
+        
+        // Hilfsfunktion: Zufälligen Teamnamen erstellen
+        function zufallsTeamname() {
+            const zufallsIndex = Math.floor(Math.random() * teamnamen.length);
+            return teamnamen[zufallsIndex];
+        }
+        
+        // Hilfsfunktion: Teamname ändern
+        function teamnameAendern(textElement, button) {
+            const alterName = textElement.textContent;
+            let neuerName = zufallsTeamname();
+            
+            // Sicherstellen, dass ein neuer Name gewählt wird
+            while (neuerName === alterName && teamnamen.length > 1) {
+                neuerName = zufallsTeamname();
+            }
+            
+            textElement.textContent = neuerName;
+            
+            // Button passt sich automatisch an durch flexbox
+        }
+        
+        // Hilfsfunktion: Teams auf dem Spielfeld anzeigen
+        function teamsAnzeigen(gemischteNamen) {
+            const spielfeld = document.getElementById('spielfeld');
+            
+            let fertigeTeams = 0;
+            let gesamtTeams = Math.ceil(gemischteNamen.length / 2);
+            let teamNummer = 0;
+            
+            // Responsive: bei kleinerem Screen 33% statt 50%
+            const spielfeldBreite = spielfeld.offsetWidth;
+            const prozent = spielfeldBreite < 800 ? 0.33 : 0.50;
+            
+            for (let i = 0; i < gemischteNamen.length; i += 2) {
+                const name1 = gemischteNamen[i];
+                const name2 = gemischteNamen[i + 1];
+                
+                const element1 = alleNameElemente[name1];
+                teamNummer++;
+                
+                // Position berechnen: 2 Spalten
+                const spalte = (teamNummer - 1) % 2; // 0 oder 1
+                const reihe = Math.floor((teamNummer - 1) / 2); // 0, 1, 2, ...
+                
+                const spaltenBreite = spielfeldBreite / 2;
+                const startX = spalte * spaltenBreite;
+                const mitteX = startX + spaltenBreite * prozent;
+                
+                const yPosition = 100 + reihe * 180; // Größerer Abstand zwischen Reihen
+                
+                if (name2) {
+                    // Zweier-Team: beide Namen nebeneinander
+                    const element2 = alleNameElemente[name2];
+                    
+                    const zielX1 = mitteX - 100;
+                    const zielX2 = mitteX + 20;
+                    
+                    // Team-Label erstellen mit Text und Button
+                    const teamLabel = document.createElement('div');
+                    teamLabel.className = 'team-label';
+                    
+                    const teamText = document.createElement('span');
+                    teamText.textContent = `Team ${teamNummer}`;
+                    
+                    const magicButton = document.createElement('button');
+                    magicButton.className = 'magic-button';
+                    magicButton.textContent = '✨';
+                    magicButton.onclick = () => teamnameAendern(teamText, magicButton);
+                    
+                    teamLabel.appendChild(teamText);
+                    teamLabel.appendChild(magicButton);
+                    
+                    teamLabel.style.left = (mitteX - 100) + 'px';
+                    teamLabel.style.top = (yPosition - 60) + 'px';
+                    teamLabel.style.opacity = '0';
+                    spielfeld.appendChild(teamLabel);
+                    
+                    // Namen fliegen zu ihren Positionen
+                    zuPositionFliegen(element1, zielX1, yPosition, () => {
+                        // Namen bleiben unverändert
+                    });
+                    
+                    zuPositionFliegen(element2, zielX2, yPosition, () => {
+                        fertigeTeams++;
+                        
+                        // Team-Label einblenden
+                        teamLabel.style.transition = 'opacity 0.5s';
+                        teamLabel.style.opacity = '1';
+                        
+                        // Wenn alle Teams fertig sind
+                        if (fertigeTeams === gesamtTeams) {
+                            // Fertig!
+                        }
+                    });
+                    
+                } else {
+                    // Einzelperson
+                    const zielX = mitteX - 60;
+                    
+                    // Team-Label erstellen mit Text und Button
+                    const teamLabel = document.createElement('div');
+                    teamLabel.className = 'team-label';
+                    
+                    const teamText = document.createElement('span');
+                    teamText.textContent = `Team ${teamNummer}`;
+                    
+                    const magicButton = document.createElement('button');
+                    magicButton.className = 'magic-button';
+                    magicButton.textContent = '✨';
+                    magicButton.onclick = () => teamnameAendern(teamText, magicButton);
+                    
+                    teamLabel.appendChild(teamText);
+                    teamLabel.appendChild(magicButton);
+                    
+                    teamLabel.style.left = (mitteX - 100) + 'px';
+                    teamLabel.style.top = (yPosition - 60) + 'px';
+                    teamLabel.style.opacity = '0';
+                    spielfeld.appendChild(teamLabel);
+                    
+                    zuPositionFliegen(element1, zielX, yPosition, () => {
+                        fertigeTeams++;
+                        
+                        // Team-Label einblenden
+                        teamLabel.style.transition = 'opacity 0.5s';
+                        teamLabel.style.opacity = '1';
+                        
+                        if (fertigeTeams === gesamtTeams) {
+                            // Fertig!
+                        }
+                    });
+                }
+            }
+        }
+
+        // ========================================================
+        // PROGRAMM STARTEN!
+        // ========================================================
+        programmeStarten();
+    </script>
+</body>
+</html>
+

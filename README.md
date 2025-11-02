@@ -20,29 +20,58 @@ Die weiteren, von Euch entwickelten Spiele gibt es hier:
 ## 📚 Dokumente
 - 📊 **PowerPoint-Folien:** <https://robsbaer.github.io/monte25/Dokumente/Folien.pptx>
 
+## 📁 Projektstruktur
 **Repository (Quellcode):** <https://github.com/robsbaer/monte25>
 
-## 📁 Projektstruktur
 ```
 ├── ball.html            # Springender Ball (p5.js)
 ├── teams.html           # Teamgenerator
 ├── Beispiele/           # Kleine Codebeispiele
 ├── Dokumente/
 │   ├── Folien.pptx      # PowerPoint-Präsentation
-│   └── Handout.pdf      # Handout
 └── README.md
 ```
 
 ## 🚀 Start
-1. Repository klonen oder herunterladen
+1. **Code von GitHub herunterladen:**
+   - Gehe zu <https://github.com/robsbaer/monte25>
+   - Klicke auf den grünen Button „Code" und wähle „Download ZIP"
+   - Entpacke die heruntergeladene Datei auf deinem Computer
+   
 2. `ball.html` oder `teams.html` im Browser öffnen
 3. Eigene Ideen ausprobieren!
 
-## 💡 Lernziele
-- Code verstehen & anpassen
-- Mit KI experimentieren
-- Verantwortungsvoll mit Technik umgehen
-- Spaß am eigenen Spiel entwickeln
+## 🛠️ Entwicklungsumgebung
+
+### Cursor IDE
+Wir verwenden **Cursor** als Entwicklungsumgebung (IDE). Cursor ist ein moderner Code-Editor, der speziell für die Programmierung mit KI-Unterstützung entwickelt wurde. Er basiert auf Visual Studio Code, bietet aber zusätzlich direkte Integration von KI-Modellen, die beim Schreiben und Verstehen von Code helfen.
+
+**Download:** <https://cursor.com>
+
+### KI-Modell: Claude 4.5 Sonnet
+Für die Code-Entwicklung nutzen wir das KI-Modell **Claude 4.5 Sonnet** von Anthropic. Dieses Modell hilft uns beim:
+- Schreiben von neuem Code
+- Verstehen und Erklären von bestehendem Code
+- Finden und Beheben von Fehlern
+- Umsetzen kreativer Spielideen
+
+### Cursor einrichten
+1. Cursor von <https://cursor.com> herunterladen und installieren
+2. Cursor öffnen
+3. `File → Open Folder` und den entpackten Projektordner `monte25` auswählen
+
+### Wichtige Einstellungen
+
+**1. Autosave aktivieren:**
+- In Cursor: `Cursor → Einstellungen → Auto Save` aktivieren
+- So werden alle Änderungen automatisch gespeichert
+
+**2. Live Server Erweiterung:**
+- Erweiterung: **Live Server** von **ritwickdey**
+- Ermöglicht direktes Testen der Spiele im Browser
+- Bei jeder Änderung wird die Seite automatisch neu geladen
+- Installation: In Cursor auf das Erweiterungs-Symbol klicken, nach „Live Server" suchen und installieren
+- Start: Rechtsklick auf eine `.html`-Datei → „Open with Live Server"
 
 ## ⚠️ KI-Hinweis
 KI kann helfen, aber sie ist nicht perfekt:
@@ -55,5 +84,6 @@ KI kann helfen, aber sie ist nicht perfekt:
 Projektleitung – *Spieleprogrammierung mit KI*  
 📧 robsmail@gmx.de
 
-🏠 **Projektseite (mit den entwickelten Spielen):** 
+## 🏠 Projektseite
+**Hier können die entwickelten Spiele aller Teams direkt ausgeführt werden:** 
 <https://robsbaer.github.io/monte25/>

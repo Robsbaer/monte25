@@ -86,4 +86,5 @@ Projektleitung – *Spieleprogrammierung mit KI*
 
 ## 🏠 Projektseite
 **Hier können die entwickelten Spiele aller Teams direkt ausgeführt werden:** 
-<https://robsbaer.github.io/monte25/>
+
+<https://robsbaer.github.io/monte25>

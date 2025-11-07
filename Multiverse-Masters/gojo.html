@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ Gojo's Infinity - Jujutsu Battle ⚡</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            overflow: hidden;
+            color: white;
+        }
+
+        #game-canvas {
+            display: block;
+            background: radial-gradient(circle at 50% 50%, #1a1a2e 0%, #0a0a15 100%);
+            margin: 0 auto;
+            box-shadow: 0 0 50px rgba(0, 200, 255, 0.5);
+        }
+
+        .hud {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 30px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px 40px;
+            border-radius: 20px;
+            border: 2px solid rgba(0, 200, 255, 0.5);
+            box-shadow: 0 0 30px rgba(0, 200, 255, 0.3);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #00d4ff;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 10px rgba(0, 200, 255, 0.8);
+        }
+
+        .health-bar {
+            width: 200px;
+            height: 25px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid rgba(0, 200, 255, 0.5);
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #0099ff);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 20px rgba(0, 200, 255, 0.8);
+        }
+
+        .skills {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+
+        .skill-btn {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 3px solid rgba(0, 200, 255, 0.6);
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 36px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .skill-btn:hover:not(.cooldown) {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 200, 255, 0.6);
+        }
+
+        .skill-btn:active:not(.cooldown) {
+            transform: translateY(-2px);
+        }
+
+        .skill-key {
+            font-size: 12px;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+
+        .skill-btn.cooldown {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .cooldown-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 12px;
+        }
+
+        .game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 50px;
+            border-radius: 30px;
+            text-align: center;
+            border: 3px solid #00d4ff;
+            box-shadow: 0 0 50px rgba(0, 200, 255, 0.8);
+            display: none;
+            z-index: 200;
+        }
+
+        .game-over h1 {
+            font-size: 48px;
+            color: #00d4ff;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(0, 200, 255, 1);
+        }
+
+        .game-over p {
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+
+        .restart-btn {
+            background: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%);
+            color: white;
+            border: none;
+            padding: 20px 50px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0, 200, 255, 0.5);
+            transition: all 0.3s;
+        }
+
+        .restart-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0, 200, 255, 0.8);
+        }
+
+        .instructions {
+            position: fixed;
+            top: 120px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid rgba(0, 200, 255, 0.5);
+            font-size: 14px;
+            line-height: 1.8;
+            max-width: 250px;
+        }
+
+        .instructions h3 {
+            color: #00d4ff;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .combo-display {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 72px;
+            font-weight: bold;
+            color: #00d4ff;
+            text-shadow: 0 0 30px rgba(0, 200, 255, 1);
+            pointer-events: none;
+            z-index: 150;
+            display: none;
+            animation: comboAnim 1s ease-out;
+        }
+
+        @keyframes comboAnim {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        }
+
+        .wave-announcement {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 64px;
+            font-weight: bold;
+            color: #00d4ff;
+            text-shadow: 0 0 30px rgba(0, 200, 255, 1);
+            pointer-events: none;
+            z-index: 150;
+            display: none;
+            animation: waveAnim 2s ease-out;
+        }
+
+        @keyframes waveAnim {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(-10deg); opacity: 0; }
+            30% { transform: translate(-50%, -50%) scale(1.1) rotate(2deg); opacity: 1; }
+            70% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0.9) rotate(0deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <!-- HUD -->
+    <div class="hud">
+        <div class="stat">
+            <div class="stat-label">❤️ LEBEN</div>
+            <div class="health-bar">
+                <div class="health-fill" id="health-bar" style="width: 100%;"></div>
+            </div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">⚡ SCORE</div>
+            <div class="stat-value" id="score">0</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">🌊 WELLE</div>
+            <div class="stat-value" id="wave">1</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">💀 FLÜCHE</div>
+            <div class="stat-value" id="enemies">0</div>
+        </div>
+    </div>
+
+    <!-- Skills -->
+    <div class="skills">
+        <div class="skill-btn" id="skill1" onclick="useSkill(1)">
+            🔵
+            <div class="skill-key">Q</div>
+        </div>
+        <div class="skill-btn" id="skill2" onclick="useSkill(2)">
+            🔴
+            <div class="skill-key">W</div>
+        </div>
+        <div class="skill-btn" id="skill3" onclick="useSkill(3)">
+            💜
+            <div class="skill-key">E</div>
+        </div>
+        <div class="skill-btn" id="skill4" onclick="useSkill(4)">
+            ⚫
+            <div class="skill-key">R</div>
+        </div>
+    </div>
+
+    <!-- Anweisungen -->
+    <div class="instructions">
+        <h3>⚡ STEUERUNG</h3>
+        <strong>Bewegen:</strong> Pfeiltasten / WASD<br>
+        <strong>Schießen:</strong> Leertaste<br>
+        <strong>Skills:</strong><br>
+        Q - 🔵 Blue (Anziehung)<br>
+        W - 🔴 Red (Abstoßung)<br>
+        E - 💜 Hollow Purple<br>
+        R - ⚫ Domain Expansion<br>
+        <br>
+        <strong>Besiege alle Flüche!</strong>
+    </div>
+
+    <!-- Combo Anzeige -->
+    <div class="combo-display" id="combo-display"></div>
+    
+    <!-- Wave Anzeige -->
+    <div class="wave-announcement" id="wave-announcement"></div>
+
+    <!-- Game Over -->
+    <div class="game-over" id="game-over">
+        <h1>SPIEL VORBEI</h1>
+        <p>Score: <span id="final-score">0</span></p>
+        <p>Erreichte Welle: <span id="final-wave">1</span></p>
+        <button class="restart-btn" onclick="restartGame()">NEUSTART</button>
+    </div>
+
+    <!-- Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <script>
+        // ========================================================
+        // 🎮 SPIEL-SETUP
+        // ========================================================
+        
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // ========================================================
+        // 🎮 SPIEL-VARIABLEN
+        // ========================================================
+        
+        let gameState = {
+            player: {
+                x: canvas.width / 2,
+                y: canvas.height / 2,
+                radius: 20,
+                speed: 5,
+                health: 100,
+                maxHealth: 100,
+                color: '#00d4ff',
+                dx: 0,
+                dy: 0
+            },
+            projectiles: [],
+            enemies: [],
+            particles: [],
+            skills: {
+                blue: { cooldown: 0, maxCooldown: 5 },
+                red: { cooldown: 0, maxCooldown: 6 },
+                purple: { cooldown: 0, maxCooldown: 10 },
+                domain: { cooldown: 0, maxCooldown: 20 }
+            },
+            score: 0,
+            wave: 1,
+            enemiesInWave: 5,
+            enemiesKilled: 0,
+            isGameOver: false,
+            keys: {},
+            combo: 0,
+            comboTimer: 0
+        };
+
+        // ========================================================
+        // 🎯 KLASSEN
+        // ========================================================
+        
+        class Projectile {
+            constructor(x, y, dx, dy, color = '#00d4ff', damage = 10) {
+                this.x = x;
+                this.y = y;
+                this.dx = dx;
+                this.dy = dy;
+                this.radius = 5;
+                this.color = color;
+                this.damage = damage;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            update() {
+                this.x += this.dx;
+                this.y += this.dy;
+                this.draw();
+            }
+        }
+
+        class Enemy {
+            constructor(x, y, wave) {
+                this.x = x;
+                this.y = y;
+                this.radius = 15 + wave * 2;
+                this.speed = 1 + wave * 0.2;
+                this.health = 20 + wave * 10;
+                this.maxHealth = this.health;
+                this.color = `hsl(${Math.random() * 60 + 280}, 70%, 50%)`;
+                this.wave = wave;
+            }
+
+            draw() {
+                // Fluch-Körper
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                // Augen
+                ctx.fillStyle = 'red';
+                ctx.beginPath();
+                ctx.arc(this.x - 7, this.y - 5, 3, 0, Math.PI * 2);
+                ctx.arc(this.x + 7, this.y - 5, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Gesundheitsbalken
+                if (this.health < this.maxHealth) {
+                    const barWidth = this.radius * 2;
+                    const barHeight = 4;
+                    const healthPercent = this.health / this.maxHealth;
+                    
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(this.x - barWidth/2, this.y - this.radius - 10, barWidth, barHeight);
+                    
+                    ctx.fillStyle = healthPercent > 0.5 ? '#00ff00' : healthPercent > 0.25 ? '#ffff00' : '#ff0000';
+                    ctx.fillRect(this.x - barWidth/2, this.y - this.radius - 10, barWidth * healthPercent, barHeight);
+                }
+            }
+
+            update() {
+                // Bewege dich zum Spieler
+                const dx = gameState.player.x - this.x;
+                const dy = gameState.player.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                this.x += (dx / dist) * this.speed;
+                this.y += (dy / dist) * this.speed;
+                
+                this.draw();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color, velocity) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.velocity = velocity;
+                this.alpha = 1;
+                this.radius = Math.random() * 3 + 2;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+
+            update() {
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.alpha -= 0.02;
+                this.draw();
+            }
+        }
+
+        // ========================================================
+        // 🎮 SPIELER FUNKTIONEN
+        // ========================================================
+        
+        function drawPlayer() {
+            const player = gameState.player;
+            
+            // Infinity Aura (äußerer Kreis)
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius + 15, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.4)';
+            ctx.lineWidth = 4;
+            ctx.shadowBlur = 40;
+            ctx.shadowColor = '#00d4ff';
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Innere Aura
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius + 8, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#00d4ff';
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Körper/Uniform (dunkelblau/schwarz)
+            ctx.beginPath();
+            ctx.arc(player.x, player.y + 3, player.radius - 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#1a1a3e';
+            ctx.fill();
+
+            // Uniform Details (hellere Akzente)
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y + 3, player.radius - 2, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Kopf (helle Hautfarbe)
+            ctx.beginPath();
+            ctx.arc(player.x, player.y - 5, player.radius * 0.6, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffe0bd';
+            ctx.fill();
+
+            // Weiße Haare (charakteristisch für Gojo)
+            ctx.fillStyle = 'white';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'white';
+            
+            // Haar Strähnen (mehrere)
+            // Links
+            ctx.beginPath();
+            ctx.ellipse(player.x - 10, player.y - 12, 5, 8, -0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Mitte Links
+            ctx.beginPath();
+            ctx.ellipse(player.x - 5, player.y - 15, 4, 7, -0.1, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Mitte
+            ctx.beginPath();
+            ctx.ellipse(player.x, player.y - 16, 5, 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Mitte Rechts
+            ctx.beginPath();
+            ctx.ellipse(player.x + 5, player.y - 15, 4, 7, 0.1, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Rechts
+            ctx.beginPath();
+            ctx.ellipse(player.x + 10, player.y - 12, 5, 8, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+
+            // Augenbinde (schwarz mit blauem Glow)
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(player.x - 12, player.y - 8, 24, 6);
+            
+            // Glow der Augenbinde
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#00d4ff';
+            ctx.strokeRect(player.x - 12, player.y - 8, 24, 6);
+            ctx.shadowBlur = 0;
+
+            // Six Eyes durch die Augenbinde sichtbar (leuchtend blau)
+            ctx.fillStyle = '#00d4ff';
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#00d4ff';
+            
+            ctx.beginPath();
+            ctx.arc(player.x - 6, player.y - 5, 2.5, 0, Math.PI * 2);
+            ctx.arc(player.x + 6, player.y - 5, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Heller Kern der Augen
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(player.x - 6, player.y - 5, 1, 0, Math.PI * 2);
+            ctx.arc(player.x + 6, player.y - 5, 1, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowBlur = 0;
+
+            // Mund (leichtes Lächeln)
+            ctx.strokeStyle = '#333333';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, 4, 0.2, Math.PI - 0.2);
+            ctx.stroke();
+
+            // Kragen Details
+            ctx.strokeStyle = '#00d4ff';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(player.x - 10, player.y + 5);
+            ctx.lineTo(player.x - 8, player.y + 8);
+            ctx.moveTo(player.x + 10, player.y + 5);
+            ctx.lineTo(player.x + 8, player.y + 8);
+            ctx.stroke();
+        }
+
+        function movePlayer() {
+            const player = gameState.player;
+            let dx = 0;
+            let dy = 0;
+
+            if (gameState.keys['ArrowUp'] || gameState.keys['w'] || gameState.keys['W']) dy -= 1;
+            if (gameState.keys['ArrowDown'] || gameState.keys['s'] || gameState.keys['S']) dy += 1;
+            if (gameState.keys['ArrowLeft'] || gameState.keys['a'] || gameState.keys['A']) dx -= 1;
+            if (gameState.keys['ArrowRight'] || gameState.keys['d'] || gameState.keys['D']) dx += 1;
+
+            // Normalisieren der Bewegung (diagonal nicht schneller)
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.707;
+                dy *= 0.707;
+            }
+
+            player.x += dx * player.speed;
+            player.y += dy * player.speed;
+
+            // Grenzen
+            player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+            player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+        }
+
+        function shootProjectile() {
+            // Schieße in Richtung des nächsten Feindes
+            if (gameState.enemies.length === 0) return;
+
+            let nearestEnemy = gameState.enemies[0];
+            let minDist = Infinity;
+
+            gameState.enemies.forEach(enemy => {
+                const dist = Math.hypot(enemy.x - gameState.player.x, enemy.y - gameState.player.y);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestEnemy = enemy;
+                }
+            });
+
+            const angle = Math.atan2(nearestEnemy.y - gameState.player.y, nearestEnemy.x - gameState.player.x);
+            const speed = 8;
+
+            gameState.projectiles.push(new Projectile(
+                gameState.player.x,
+                gameState.player.y,
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed,
+                '#00d4ff',
+                10
+            ));
+        }
+
+        // ========================================================
+        // ⚡ SKILLS
+        // ========================================================
+        
+        function useSkill(skillNum) {
+            if (gameState.isGameOver) return;
+
+            switch(skillNum) {
+                case 1: // Blue - Anziehung
+                    if (gameState.skills.blue.cooldown === 0) {
+                        skillBlue();
+                        gameState.skills.blue.cooldown = gameState.skills.blue.maxCooldown;
+                    }
+                    break;
+                case 2: // Red - Abstoßung
+                    if (gameState.skills.red.cooldown === 0) {
+                        skillRed();
+                        gameState.skills.red.cooldown = gameState.skills.red.maxCooldown;
+                    }
+                    break;
+                case 3: // Hollow Purple
+                    if (gameState.skills.purple.cooldown === 0) {
+                        skillPurple();
+                        gameState.skills.purple.cooldown = gameState.skills.purple.maxCooldown;
+                    }
+                    break;
+                case 4: // Domain Expansion
+                    if (gameState.skills.domain.cooldown === 0) {
+                        skillDomain();
+                        gameState.skills.domain.cooldown = gameState.skills.domain.maxCooldown;
+                    }
+                    break;
+            }
+        }
+
+        function skillBlue() {
+            // Ziehe alle Feinde an und verursache Schaden
+            gameState.enemies.forEach(enemy => {
+                const dx = gameState.player.x - enemy.x;
+                const dy = gameState.player.y - enemy.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                enemy.x += (dx / dist) * 100;
+                enemy.y += (dy / dist) * 100;
+                enemy.health -= 30;
+
+                // Partikel
+                for (let i = 0; i < 10; i++) {
+                    gameState.particles.push(new Particle(
+                        enemy.x,
+                        enemy.y,
+                        '#0099ff',
+                        { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 4 }
+                    ));
+                }
+            });
+
+            showCombo('BLUE! 🔵');
+        }
+
+        function skillRed() {
+            // Stoße alle Feinde ab und verursache Schaden
+            gameState.enemies.forEach(enemy => {
+                const dx = enemy.x - gameState.player.x;
+                const dy = enemy.y - gameState.player.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                enemy.x += (dx / dist) * 150;
+                enemy.y += (dy / dist) * 150;
+                enemy.health -= 40;
+
+                // Partikel
+                for (let i = 0; i < 15; i++) {
+                    gameState.particles.push(new Particle(
+                        enemy.x,
+                        enemy.y,
+                        '#ff0066',
+                        { x: (Math.random() - 0.5) * 6, y: (Math.random() - 0.5) * 6 }
+                    ));
+                }
+            });
+
+            showCombo('RED! 🔴');
+        }
+
+        function skillPurple() {
+            // Hollow Purple - Massiver Schaden in alle Richtungen
+            gameState.enemies.forEach(enemy => {
+                enemy.health -= 80;
+
+                // Massive Partikel-Explosion
+                for (let i = 0; i < 25; i++) {
+                    gameState.particles.push(new Particle(
+                        enemy.x,
+                        enemy.y,
+                        '#9933ff',
+                        { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 8 }
+                    ));
+                }
+            });
+
+            // Screen-Shake Effekt (visuell durch Partikel)
+            for (let i = 0; i < 100; i++) {
+                gameState.particles.push(new Particle(
+                    gameState.player.x,
+                    gameState.player.y,
+                    '#9933ff',
+                    { 
+                        x: (Math.random() - 0.5) * 20, 
+                        y: (Math.random() - 0.5) * 20 
+                    }
+                ));
+            }
+
+            showCombo('HOLLOW PURPLE! 💜');
+        }
+
+        function skillDomain() {
+            // Domain Expansion: Unlimited Void - Töte alle Feinde auf dem Bildschirm
+            const enemyCount = gameState.enemies.length;
+            
+            gameState.enemies.forEach(enemy => {
+                gameState.score += Math.floor(enemy.maxHealth / 2);
+                
+                // Partikel-Explosion
+                for (let i = 0; i < 30; i++) {
+                    gameState.particles.push(new Particle(
+                        enemy.x,
+                        enemy.y,
+                        '#ffffff',
+                        { x: (Math.random() - 0.5) * 10, y: (Math.random() - 0.5) * 10 }
+                    ));
+                }
+            });
+
+            gameState.enemies = [];
+            gameState.enemiesKilled += enemyCount;
+
+            // Riesige Domain-Expansion Effekt
+            for (let i = 0; i < 200; i++) {
+                const angle = (Math.PI * 2 * i) / 200;
+                const distance = Math.random() * 300 + 100;
+                gameState.particles.push(new Particle(
+                    gameState.player.x + Math.cos(angle) * distance,
+                    gameState.player.y + Math.sin(angle) * distance,
+                    '#ffffff',
+                    { 
+                        x: Math.cos(angle) * 3, 
+                        y: Math.sin(angle) * 3 
+                    }
+                ));
+            }
+
+            showCombo('DOMAIN EXPANSION! ⚫');
+        }
+
+        function updateCooldowns() {
+            Object.keys(gameState.skills).forEach(skill => {
+                if (gameState.skills[skill].cooldown > 0) {
+                    gameState.skills[skill].cooldown -= 1/60; // 60 FPS
+                    if (gameState.skills[skill].cooldown < 0) {
+                        gameState.skills[skill].cooldown = 0;
+                    }
+                }
+            });
+
+            // Update UI
+            updateSkillButtons();
+        }
+
+        function updateSkillButtons() {
+            const skills = ['blue', 'red', 'purple', 'domain'];
+            skills.forEach((skill, index) => {
+                const btn = document.getElementById(`skill${index + 1}`);
+                const cooldown = gameState.skills[skill].cooldown;
+                
+                if (cooldown > 0) {
+                    btn.classList.add('cooldown');
+                    let overlay = btn.querySelector('.cooldown-overlay');
+                    if (!overlay) {
+                        overlay = document.createElement('div');
+                        overlay.className = 'cooldown-overlay';
+                        btn.appendChild(overlay);
+                    }
+                    overlay.textContent = Math.ceil(cooldown);
+                } else {
+                    btn.classList.remove('cooldown');
+                    const overlay = btn.querySelector('.cooldown-overlay');
+                    if (overlay) overlay.remove();
+                }
+            });
+        }
+
+        // ========================================================
+        // 👾 FEINDE
+        // ========================================================
+        
+        function spawnEnemies() {
+            const enemiesNeeded = gameState.enemiesInWave - gameState.enemies.length;
+            
+            for (let i = 0; i < Math.min(enemiesNeeded, 3); i++) {
+                const side = Math.floor(Math.random() * 4);
+                let x, y;
+                
+                switch(side) {
+                    case 0: x = Math.random() * canvas.width; y = -30; break;
+                    case 1: x = canvas.width + 30; y = Math.random() * canvas.height; break;
+                    case 2: x = Math.random() * canvas.width; y = canvas.height + 30; break;
+                    case 3: x = -30; y = Math.random() * canvas.height; break;
+                }
+                
+                gameState.enemies.push(new Enemy(x, y, gameState.wave));
+            }
+        }
+
+        function checkWaveComplete() {
+            if (gameState.enemiesKilled >= gameState.enemiesInWave && gameState.enemies.length === 0) {
+                gameState.wave++;
+                gameState.enemiesInWave = 5 + gameState.wave * 3;
+                gameState.enemiesKilled = 0;
+                
+                // Heile den Spieler ein bisschen
+                gameState.player.health = Math.min(gameState.player.maxHealth, gameState.player.health + 20);
+                
+                showWave();
+            }
+        }
+
+        // ========================================================
+        // 💥 KOLLISIONEN
+        // ========================================================
+        
+        function checkCollisions() {
+            // Projektile vs Feinde
+            gameState.projectiles.forEach((projectile, pIndex) => {
+                gameState.enemies.forEach((enemy, eIndex) => {
+                    const dist = Math.hypot(projectile.x - enemy.x, projectile.y - enemy.y);
+                    
+                    if (dist < enemy.radius + projectile.radius) {
+                        enemy.health -= projectile.damage;
+                        
+                        // Partikel
+                        for (let i = 0; i < 5; i++) {
+                            gameState.particles.push(new Particle(
+                                projectile.x,
+                                projectile.y,
+                                projectile.color,
+                                { x: (Math.random() - 0.5) * 3, y: (Math.random() - 0.5) * 3 }
+                            ));
+                        }
+                        
+                        gameState.projectiles.splice(pIndex, 1);
+                        
+                        if (enemy.health <= 0) {
+                            gameState.score += 10 * gameState.wave;
+                            gameState.enemiesKilled++;
+                            gameState.combo++;
+                            gameState.comboTimer = 120; // 2 Sekunden
+                            
+                            // Tod-Partikel
+                            for (let i = 0; i < 20; i++) {
+                                gameState.particles.push(new Particle(
+                                    enemy.x,
+                                    enemy.y,
+                                    enemy.color,
+                                    { x: (Math.random() - 0.5) * 6, y: (Math.random() - 0.5) * 6 }
+                                ));
+                            }
+                            
+                            gameState.enemies.splice(eIndex, 1);
+                            
+                            if (gameState.combo > 0 && gameState.combo % 5 === 0) {
+                                showCombo(`${gameState.combo}x COMBO!`);
+                            }
+                        }
+                    }
+                });
+            });
+
+            // Feinde vs Spieler
+            gameState.enemies.forEach(enemy => {
+                const dist = Math.hypot(enemy.x - gameState.player.x, enemy.y - gameState.player.y);
+                
+                if (dist < enemy.radius + gameState.player.radius) {
+                    gameState.player.health -= 0.5; // Schaden über Zeit
+                    
+                    if (gameState.player.health <= 0) {
+                        gameOver();
+                    }
+                }
+            });
+        }
+
+        // ========================================================
+        // 🎨 UI UPDATES
+        // ========================================================
+        
+        function updateUI() {
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('wave').textContent = gameState.wave;
+            document.getElementById('enemies').textContent = gameState.enemies.length;
+            
+            const healthPercent = (gameState.player.health / gameState.player.maxHealth) * 100;
+            document.getElementById('health-bar').style.width = healthPercent + '%';
+
+            // Combo Timer
+            if (gameState.comboTimer > 0) {
+                gameState.comboTimer--;
+            } else {
+                gameState.combo = 0;
+            }
+        }
+
+        function showCombo(text) {
+            const comboDiv = document.getElementById('combo-display');
+            comboDiv.textContent = text;
+            comboDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                comboDiv.style.display = 'none';
+            }, 1000);
+        }
+
+        function showWave() {
+            const waveDiv = document.getElementById('wave-announcement');
+            waveDiv.textContent = `🌊 WELLE ${gameState.wave} 🌊`;
+            waveDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                waveDiv.style.display = 'none';
+            }, 2000);
+        }
+
+        // ========================================================
+        // 🎮 GAME LOOP
+        // ========================================================
+        
+        function gameLoop() {
+            if (gameState.isGameOver) return;
+
+            // Clear
+            ctx.fillStyle = 'rgba(26, 26, 46, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Update
+            movePlayer();
+            updateCooldowns();
+            
+            // Spawn Enemies
+            if (gameState.enemies.length < gameState.enemiesInWave) {
+                if (Math.random() < 0.02) {
+                    spawnEnemies();
+                }
+            }
+
+            // Draw & Update alle Objekte
+            drawPlayer();
+
+            gameState.projectiles.forEach((projectile, index) => {
+                projectile.update();
+                
+                // Entferne Projektile außerhalb des Bildschirms
+                if (projectile.x < 0 || projectile.x > canvas.width ||
+                    projectile.y < 0 || projectile.y > canvas.height) {
+                    gameState.projectiles.splice(index, 1);
+                }
+            });
+
+            gameState.enemies.forEach(enemy => {
+                enemy.update();
+            });
+
+            gameState.particles.forEach((particle, index) => {
+                if (particle.alpha <= 0) {
+                    gameState.particles.splice(index, 1);
+                } else {
+                    particle.update();
+                }
+            });
+
+            checkCollisions();
+            checkWaveComplete();
+            updateUI();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ========================================================
+        // 🎮 GAME OVER & RESTART
+        // ========================================================
+        
+        function gameOver() {
+            gameState.isGameOver = true;
+            document.getElementById('final-score').textContent = gameState.score;
+            document.getElementById('final-wave').textContent = gameState.wave;
+            document.getElementById('game-over').style.display = 'block';
+        }
+
+        function restartGame() {
+            // Reset
+            gameState = {
+                player: {
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    radius: 20,
+                    speed: 5,
+                    health: 100,
+                    maxHealth: 100,
+                    color: '#00d4ff',
+                    dx: 0,
+                    dy: 0
+                },
+                projectiles: [],
+                enemies: [],
+                particles: [],
+                skills: {
+                    blue: { cooldown: 0, maxCooldown: 5 },
+                    red: { cooldown: 0, maxCooldown: 6 },
+                    purple: { cooldown: 0, maxCooldown: 10 },
+                    domain: { cooldown: 0, maxCooldown: 20 }
+                },
+                score: 0,
+                wave: 1,
+                enemiesInWave: 5,
+                enemiesKilled: 0,
+                isGameOver: false,
+                keys: {},
+                combo: 0,
+                comboTimer: 0
+            };
+
+            document.getElementById('game-over').style.display = 'none';
+            gameLoop();
+        }
+
+        // ========================================================
+        // ⌨️ EINGABEN
+        // ========================================================
+        
+        window.addEventListener('keydown', (e) => {
+            gameState.keys[e.key] = true;
+
+            if (e.key === ' ') {
+                e.preventDefault();
+                shootProjectile();
+            }
+            if (e.key === 'q' || e.key === 'Q') useSkill(1);
+            if (e.key === 'w' || e.key === 'W') useSkill(2);
+            if (e.key === 'e' || e.key === 'E') useSkill(3);
+            if (e.key === 'r' || e.key === 'R') useSkill(4);
+        });
+
+        window.addEventListener('keyup', (e) => {
+            gameState.keys[e.key] = false;
+        });
+
+        // Auto-Shoot
+        setInterval(() => {
+            if (!gameState.isGameOver && gameState.enemies.length > 0) {
+                shootProjectile();
+            }
+        }, 500);
+
+        // ========================================================
+        // 🎬 START
+        // ========================================================
+        
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gameState.player.x = canvas.width / 2;
+            gameState.player.y = canvas.height / 2;
+        });
+
+        gameLoop();
+    </script>
+</body>
+</html>
+

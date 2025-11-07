@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+    <script>
+      // Position der Kugel
+      let x = 100;
+      let y = 0;
+      // Geschwindigkeit der Kugel
+      let vx = 6;  // Ball rollt automatisch nach rechts
+      let vy = 5;
+      // Anziehungskraft
+      let g = 0.5;
+      // Radius der Kugel
+      let radius = 25;
+      // Rückprallfaktor
+      let restitution = 0.0;
+      // Rotation des Balls
+      let rotation = 0;
+      // Scroll-Offset für endlosen Hintergrund
+      let scrollOffset = 0;
+      // Doppelsprung
+      let jumpsLeft = 2;  // Anzahl verfügbarer Sprünge
+      let maxJumps = 2;   // Maximum Sprünge
+      // Hindernisse
+      let obstacles = [];
+      let nextObstacleDistance = 400;
+      let gameOver = false;
+      let score = 0;
+      let level = 1;
+      let maxLevel = 5;
+      
+      // Audio
+      let audioContext;
+      let musicPlaying = false;
+      let musicEnabled = true;
+      let currentOscillators = [];
+      let musicInterval;
+
+      // Erstelle die Oberfläche
+      function setup() {
+        // Erstelle eine Oberfläche mit 600x400 Pixeln
+        createCanvas(1200, 800);
+        // Audio Context initialisieren
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      
+      // Sound-Effekt für Sprung
+      function playSoundJump() {
+        if (!musicEnabled) return;
+        let osc = audioContext.createOscillator();
+        let gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.value = 400;
+        osc.type = 'sine';
+        gain.gain.value = 0.1;
+        osc.start();
+        osc.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        osc.stop(audioContext.currentTime + 0.1);
+      }
+      
+      // Sound-Effekt für Level-Up
+      function playSoundLevelUp() {
+        if (!musicEnabled) return;
+        [523, 659, 784, 1047].forEach((freq, i) => {
+          setTimeout(() => {
+            let osc = audioContext.createOscillator();
+            let gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = freq;
+            osc.type = 'triangle';
+            gain.gain.value = 0.15;
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            osc.stop(audioContext.currentTime + 0.2);
+          }, i * 100);
+        });
+      }
+      
+      // Sound-Effekt für Game Over
+      function playSoundGameOver() {
+        if (!musicEnabled) return;
+        let osc = audioContext.createOscillator();
+        let gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.value = 200;
+        osc.type = 'sawtooth';
+        gain.gain.value = 0.2;
+        osc.start();
+        osc.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.5);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        osc.stop(audioContext.currentTime + 0.5);
+      }
+      
+      // Hintergrundmusik für verschiedene Level
+      function playBackgroundMusic(lvl) {
+        if (!musicEnabled || musicPlaying) return;
+        musicPlaying = true;
+        
+        // Melodien für verschiedene Level
+        const melodies = {
+          1: [262, 294, 330, 349, 392], // C-Dur (fröhlich)
+          2: [294, 330, 370, 392, 440], // D-Dur (energetisch)
+          3: [330, 349, 392, 440, 494], // E-Dur (hell)
+          4: [220, 247, 277, 294, 330], // A-Moll (melancholisch)
+          5: [196, 220, 247, 262, 294]  // G-Dur (mystisch)
+        };
+        
+        const melody = melodies[lvl] || melodies[1];
+        const tempo = 400 - (lvl * 30); // Schneller je höher das Level
+        
+        let noteIndex = 0;
+        musicInterval = setInterval(() => {
+          if (!musicEnabled || gameOver) {
+            stopBackgroundMusic();
+            return;
+          }
+          
+          let osc = audioContext.createOscillator();
+          let gain = audioContext.createGain();
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+          osc.frequency.value = melody[noteIndex % melody.length];
+          osc.type = 'triangle';
+          gain.gain.value = 0.05;
+          osc.start();
+          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + tempo / 1000);
+          osc.stop(audioContext.currentTime + tempo / 1000);
+          
+          noteIndex++;
+        }, tempo);
+      }
+      
+      // Musik stoppen
+      function stopBackgroundMusic() {
+        if (musicInterval) {
+          clearInterval(musicInterval);
+          musicInterval = null;
+        }
+        musicPlaying = false;
+      }
+      
+      // Musik umschalten
+      function toggleMusic() {
+        musicEnabled = !musicEnabled;
+        if (!musicEnabled) {
+          stopBackgroundMusic();
+        } else {
+          playBackgroundMusic(level);
+        }
+      }
+      
+      // Erstelle ein neues Hindernis basierend auf dem Level
+      function createObstacle() {
+        let obstacleTypes = {
+          1: [ // Level 1: Grüne Steine
+            { width: 30, height: 40, color: [100, 140, 80], name: "Kleiner Stein" },
+            { width: 40, height: 70, color: [80, 120, 60], name: "Mittlerer Stein" },
+            { width: 50, height: 100, color: [60, 100, 40], name: "Großer Stein" },
+            { width: 35, height: 120, color: [50, 90, 30], name: "Hoher Stein" }
+          ],
+          2: [ // Level 2: Sand-Kakteen und Felsen
+            { width: 25, height: 60, color: [100, 160, 80], name: "Kaktus", shape: "cactus" },
+            { width: 45, height: 50, color: [200, 150, 100], name: "Sandfelsen" },
+            { width: 35, height: 90, color: [190, 140, 90], name: "Großer Felsen" },
+            { width: 30, height: 110, color: [80, 140, 70], name: "Großer Kaktus", shape: "cactus" }
+          ],
+          3: [ // Level 3: Eis und Schneehaufen
+            { width: 40, height: 45, color: [200, 220, 255], name: "Eisblock" },
+            { width: 50, height: 70, color: [180, 210, 250], name: "Schneehaufen" },
+            { width: 35, height: 100, color: [190, 215, 255], name: "Großer Eisblock" },
+            { width: 45, height: 85, color: [170, 200, 245], name: "Eiszapfen" }
+          ],
+          4: [ // Level 4: Dunkle Felsen
+            { width: 35, height: 55, color: [120, 80, 140], name: "Dunkler Stein" },
+            { width: 45, height: 75, color: [100, 60, 120], name: "Lila Felsen" },
+            { width: 40, height: 105, color: [90, 50, 110], name: "Großer Felsen" },
+            { width: 30, height: 95, color: [80, 40, 100], name: "Spitzer Stein" }
+          ],
+          5: [ // Level 5: Kristalle und dunkle Steine
+            { width: 30, height: 60, color: [100, 80, 150], name: "Kristall", shape: "crystal" },
+            { width: 40, height: 80, color: [60, 60, 120], name: "Dunkler Stein" },
+            { width: 35, height: 110, color: [80, 60, 140], name: "Großer Kristall", shape: "crystal" },
+            { width: 45, height: 70, color: [50, 50, 100], name: "Nachfelsen" }
+          ]
+        };
+        
+        let types = obstacleTypes[level] || obstacleTypes[1];
+        let type = random(types);
+        return {
+          x: width + 50,
+          width: type.width,
+          height: type.height,
+          color: type.color,
+          name: type.name,
+          shape: type.shape || "rect"
+        };
+      }
+
+      // Level-Themes definieren
+      function getLevelTheme(lvl) {
+        const themes = {
+          1: { // Grüne Berge
+            name: "Grüne Berge",
+            skyTop: [135, 206, 250],
+            skyBottom: [70, 130, 255],
+            sunColor: [255, 220, 0],
+            mountainBack: [100, 120, 100],
+            mountainFront: [120, 160, 120],
+            groundMain: [50, 180, 50],
+            groundStripe: [40, 160, 40]
+          },
+          2: { // Wüste
+            name: "Wüste",
+            skyTop: [255, 200, 150],
+            skyBottom: [255, 150, 80],
+            sunColor: [255, 180, 0],
+            mountainBack: [200, 160, 100],
+            mountainFront: [220, 180, 120],
+            groundMain: [240, 200, 120],
+            groundStripe: [220, 180, 100]
+          },
+          3: { // Schnee-Berge
+            name: "Schnee-Berge",
+            skyTop: [200, 230, 255],
+            skyBottom: [150, 200, 255],
+            sunColor: [255, 255, 200],
+            mountainBack: [180, 200, 220],
+            mountainFront: [200, 220, 240],
+            groundMain: [240, 245, 255],
+            groundStripe: [220, 230, 245]
+          },
+          4: { // Sonnenuntergang
+            name: "Sonnenuntergang",
+            skyTop: [255, 150, 100],
+            skyBottom: [255, 80, 120],
+            sunColor: [255, 100, 50],
+            mountainBack: [80, 60, 100],
+            mountainFront: [120, 80, 140],
+            groundMain: [100, 80, 60],
+            groundStripe: [80, 60, 50]
+          },
+          5: { // Nacht
+            name: "Nacht",
+            skyTop: [20, 20, 60],
+            skyBottom: [10, 10, 40],
+            sunColor: [255, 255, 220], // Mond
+            mountainBack: [40, 40, 80],
+            mountainFront: [60, 60, 100],
+            groundMain: [30, 50, 30],
+            groundStripe: [20, 40, 20]
+          }
+        };
+        return themes[lvl] || themes[1];
+      }
+      
+      // Funktion zum Zeichnen der Landschaft (wiederholt sich)
+      function drawLandscape(offset) {
+        let theme = getLevelTheme(level);
+        
+        // Himmel (Farbverlauf)
+        for (let i = 0; i < height * 0.7; i++) {
+          let inter = map(i, 0, height * 0.7, 0, 1);
+          let c = lerpColor(
+            color(theme.skyTop[0], theme.skyTop[1], theme.skyTop[2]), 
+            color(theme.skyBottom[0], theme.skyBottom[1], theme.skyBottom[2]), 
+            inter
+          );
+          stroke(c);
+          line(0, i, width, i);
+        }
+        
+        // Sonne/Mond (bewegt sich langsam)
+        noStroke();
+        fill(theme.sunColor[0], theme.sunColor[1], theme.sunColor[2]);
+        let sunX = (850 - offset * 0.1) % (width + 200);
+        if (sunX < -100) sunX += width + 200;
+        circle(sunX, 100, 80);
+        
+        // Sterne bei Level 5 (Nacht)
+        if (level === 5) {
+          fill(255, 255, 255, 200);
+          for (let i = 0; i < 50; i++) {
+            let sx = (i * 123 + offset * 0.05) % width;
+            let sy = (i * 73) % (height * 0.6);
+            circle(sx, sy, 2);
+          }
+        }
+        
+        // Berge im Hintergrund (dunkel) - scrollen langsam
+        fill(theme.mountainBack[0], theme.mountainBack[1], theme.mountainBack[2]);
+        for (let i = -1; i <= 2; i++) {
+          let baseOffset = i * 1000 - (offset * 0.3) % 1000;
+          triangle(baseOffset, height * 0.7, baseOffset + 300, height * 0.3, baseOffset + 600, height * 0.7);
+          triangle(baseOffset + 400, height * 0.7, baseOffset + 700, height * 0.25, baseOffset + 1000, height * 0.7);
+        }
+        
+        // Berge im Vordergrund (heller) - scrollen schneller
+        fill(theme.mountainFront[0], theme.mountainFront[1], theme.mountainFront[2]);
+        for (let i = -1; i <= 2; i++) {
+          let baseOffset = i * 1000 - (offset * 0.5) % 1000;
+          triangle(baseOffset - 100, height * 0.7, baseOffset + 200, height * 0.5, baseOffset + 500, height * 0.7);
+          triangle(baseOffset + 300, height * 0.7, baseOffset + 600, height * 0.45, baseOffset + 900, height * 0.7);
+        }
+        
+        // Boden mit Streifen für Bewegungseffekt
+        fill(theme.groundMain[0], theme.groundMain[1], theme.groundMain[2]);
+        rect(0, height * 0.7, width, height * 0.3);
+        fill(theme.groundStripe[0], theme.groundStripe[1], theme.groundStripe[2]);
+        for (let i = -1; i <= width / 50 + 1; i++) {
+          let grassX = i * 50 - (offset % 50);
+          rect(grassX, height * 0.7, 25, height * 0.3);
+        }
+      }
+      
+      // Zeichne die Kugel
+      function draw() {
+        if (gameOver) {
+          // Game Over Bildschirm
+          background(50);
+          fill(255, 0, 0);
+          textSize(64);
+          textAlign(CENTER, CENTER);
+          text("GAME OVER", width/2, height/2 - 80);
+          fill(255);
+          textSize(24);
+          text("Score: " + score, width/2, height/2 - 20);
+          let theme = getLevelTheme(level);
+          textSize(20);
+          text("Level erreicht: " + level + " (" + theme.name + ")", width/2, height/2 + 15);
+          textSize(18);
+          text("Drücke 'R' zum Neustarten | 'M' für Musik An/Aus", width/2, height/2 + 60);
+          textAlign(LEFT, BASELINE);
+          return;
+        }
+        
+        // Landschaftshintergrund zeichnen
+        drawLandscape(scrollOffset);
+        
+        // Boden-Höhe definieren
+        let groundY = height * 0.7;
+        
+        // Level-Update basierend auf Score
+        let oldLevel = level;
+        level = min(floor(score / 10) + 1, maxLevel);
+        
+        // Level-Up Anzeige und Musik
+        if (level > oldLevel) {
+          playSoundLevelUp();
+          stopBackgroundMusic();
+          playBackgroundMusic(level);
+        }
+        
+        // Hintergrundmusik starten wenn noch nicht gestartet
+        if (!musicPlaying && musicEnabled && !gameOver) {
+          playBackgroundMusic(level);
+        }
+        
+        // Neue Hindernisse erstellen
+        nextObstacleDistance -= vx;
+        if (nextObstacleDistance <= 0) {
+          obstacles.push(createObstacle());
+          nextObstacleDistance = random(300, 500);
+          score++;
+        }
+        
+        // Hindernisse zeichnen und bewegen
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+          let obs = obstacles[i];
+          obs.x -= vx;
+          
+          // Hindernis zeichnen basierend auf Form
+          fill(obs.color[0], obs.color[1], obs.color[2]);
+          noStroke();
+          
+          if (obs.shape === "cactus") {
+            // Kaktus zeichnen
+            rect(obs.x + obs.width/3, groundY - obs.height, obs.width/3, obs.height);
+            // Arme
+            rect(obs.x, groundY - obs.height * 0.6, obs.width/4, obs.height * 0.3);
+            rect(obs.x + obs.width * 0.75, groundY - obs.height * 0.7, obs.width/4, obs.height * 0.3);
+          } else if (obs.shape === "crystal") {
+            // Kristall zeichnen (Dreieck)
+            triangle(
+              obs.x + obs.width/2, groundY - obs.height,
+              obs.x, groundY,
+              obs.x + obs.width, groundY
+            );
+            // Highlight
+            fill(255, 255, 255, 100);
+            triangle(
+              obs.x + obs.width/2, groundY - obs.height,
+              obs.x + obs.width/4, groundY - obs.height/2,
+              obs.x + obs.width/2, groundY - obs.height/2
+            );
+            fill(obs.color[0], obs.color[1], obs.color[2]);
+          } else {
+            // Normale Rechteck-Form
+            rect(obs.x, groundY - obs.height, obs.width, obs.height);
+          }
+          
+          // Schatten
+          fill(0, 0, 0, 50);
+          ellipse(obs.x + obs.width/2, groundY + 5, obs.width * 0.8, 10);
+          
+          // Entferne Hindernisse, die aus dem Bildschirm sind
+          if (obs.x + obs.width < 0) {
+            obstacles.splice(i, 1);
+          }
+          
+          // Kollisionserkennung
+          let ballLeft = x - radius;
+          let ballRight = x + radius;
+          let ballTop = y - radius;
+          let ballBottom = y + radius;
+          
+          let obsLeft = obs.x;
+          let obsRight = obs.x + obs.width;
+          let obsTop = groundY - obs.height;
+          let obsBottom = groundY;
+          
+          if (ballRight > obsLeft && ballLeft < obsRight &&
+              ballBottom > obsTop && ballTop < obsBottom) {
+            gameOver = true;
+            playSoundGameOver();
+            stopBackgroundMusic();
+          }
+        }
+        
+        // Berechne die Physik
+        vy += g;
+        y += vy;
+        x += vx;
+        
+        // Scroll-Offset aktualisieren
+        scrollOffset += vx;
+        
+        // Ball rollt konstant weiter (keine Reibung mehr)
+        // vx bleibt konstant bei 6
+        
+        // Rotation basierend auf horizontaler Bewegung
+        rotation += vx * 0.1;
+
+        // Behandle Boden-Kollision (auf dem Gras, nicht ganz unten)
+        if (y + radius > groundY) {
+          y = groundY - radius;
+          vy = -vy * restitution;
+          // Sprünge zurücksetzen wenn auf dem Boden
+          jumpsLeft = maxJumps;
+        }
+        
+        // Ball bleibt links am Anfang des Bildschirms
+        if (x < 100) {
+          x = 100;
+        }
+        if (x > 150) {
+          x = 150;
+        }
+
+        // Zeichne die Kugel mit Rotation
+        push();
+        translate(x, y);
+        rotate(rotation);
+        
+        // Ball mit Gojo's Augenfarbe (leuchtendes Cyan/Blau)
+        fill(0, 200, 255);
+        noStroke();
+        circle(0, 0, radius * 2);
+        
+        // Streifen auf dem Ball (helleres Cyan)
+        fill(100, 220, 255);
+        arc(0, 0, radius * 2, radius * 2, 0, PI);
+        
+        // Punkt auf dem Ball für Rotation
+        fill(255, 255, 255);
+        circle(radius * 0.6, 0, 8);
+        
+        pop();
+
+        // Anzeige der verfügbaren Sprünge
+        fill(255);
+        stroke(0);
+        strokeWeight(3);
+        textSize(16);
+        text("Leertaste = Sprung | M = Musik | Sprünge: " + jumpsLeft, 10, 25);
+        noStroke();
+        
+        // Score und Level anzeigen
+        fill(255);
+        stroke(0);
+        strokeWeight(3);
+        textSize(20);
+        text("Score: " + score, 10, 55);
+        noStroke();
+        
+        // Level und Theme anzeigen
+        let theme = getLevelTheme(level);
+        fill(255);
+        stroke(0);
+        strokeWeight(3);
+        textSize(20);
+        text("Level " + level + ": " + theme.name, 10, 85);
+        noStroke();
+        
+        // Nächstes Level Info
+        if (level < maxLevel) {
+          fill(255, 255, 0);
+          stroke(0);
+          strokeWeight(2);
+          textSize(14);
+          let nextLevelScore = level * 10;
+          text("Nächstes Level bei Score: " + nextLevelScore, 10, 110);
+          noStroke();
+        } else {
+          fill(255, 215, 0);
+          stroke(0);
+          strokeWeight(2);
+          textSize(14);
+          text("MAX LEVEL erreicht!", 10, 110);
+          noStroke();
+        }
+        
+        // Musik Status anzeigen
+        fill(musicEnabled ? [100, 255, 100] : [255, 100, 100]);
+        stroke(0);
+        strokeWeight(2);
+        textSize(16);
+        text("♪ Musik: " + (musicEnabled ? "AN" : "AUS"), width - 150, 25);
+        noStroke();
+      }
+
+      // Restart-Funktion
+      function restartGame() {
+        gameOver = false;
+        score = 0;
+        level = 1;
+        obstacles = [];
+        nextObstacleDistance = 400;
+        x = 100;
+        y = 0;
+        vy = 5;
+        vx = 6;
+        rotation = 0;
+        scrollOffset = 0;
+        jumpsLeft = 2;
+        // Musik neu starten
+        stopBackgroundMusic();
+        if (musicEnabled) {
+          setTimeout(() => playBackgroundMusic(1), 100);
+        }
+      }
+      
+      // Taste gedrückt-Funktion
+      function keyPressed() {
+        if (keyCode === 32 && !gameOver) {
+          // Leertaste = Sprung (Doppelsprung möglich!)
+          if (jumpsLeft > 0) {
+            vy = -12;
+            jumpsLeft--;  // Einen Sprung verbrauchen
+            playSoundJump();  // Sprung-Sound
+          }
+        }
+        
+        // M = Musik An/Aus (KeyCode 77)
+        if (keyCode === 77) {
+          toggleMusic();
+        }
+        
+        // R = Restart
+        if (keyCode === 82 && gameOver) {
+          restartGame();
+        }
+      }
+    </script>
+  </body>
+</html>

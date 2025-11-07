@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐾 Adopt Me - Haustier Spiel 🐾</title>
+    <style>
+        /* ========== STYLING (Design) ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            font-size: 48px;
+        }
+
+        .game-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 20px;
+        }
+
+        /* Linke Sidebar - Statistiken */
+        .stats-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .stats-panel h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        .money-display {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .stat-item {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-bar {
+            background: #ddd;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .stat-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .hunger-fill { background: linear-gradient(90deg, #f093fb, #f5576c); }
+        .happiness-fill { background: linear-gradient(90deg, #ffd700, #ffed4e); }
+        .health-fill { background: linear-gradient(90deg, #4facfe, #00f2fe); }
+        .energy-fill { background: linear-gradient(90deg, #43e97b, #38f9d7); }
+
+        /* Mittlerer Bereich - Haustier */
+        .pet-area {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            min-height: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .no-pet {
+            text-align: center;
+        }
+
+        .no-pet h2 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .adopt-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+        }
+
+        .adopt-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+
+        .pet-display {
+            text-align: center;
+            width: 100%;
+        }
+
+        .pet-name {
+            font-size: 36px;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .pet-level {
+            font-size: 20px;
+            color: #f5576c;
+            margin-bottom: 20px;
+        }
+
+        .pet-emoji {
+            font-size: 200px;
+            margin: 20px 0;
+            animation: float 3s ease-in-out infinite;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .pet-emoji:hover {
+            transform: scale(1.1);
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .pet-mood {
+            font-size: 24px;
+            color: #764ba2;
+            margin-top: 10px;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 30px;
+            width: 100%;
+        }
+
+        .action-btn {
+            background: white;
+            border: 3px solid #667eea;
+            color: #667eea;
+            padding: 15px 25px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .action-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .action-btn:disabled:hover {
+            background: white;
+            color: #667eea;
+            transform: none;
+        }
+
+        /* Rechte Sidebar - Shop */
+        .shop-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .shop-panel h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        .shop-item {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .shop-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+
+        .shop-item-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .shop-item-price {
+            color: #2d3436;
+            font-weight: bold;
+        }
+
+        .shop-item-desc {
+            font-size: 12px;
+            color: #636e72;
+            margin-top: 5px;
+        }
+
+        /* Modal für Haustier-Auswahl */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 30px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .modal-content h2 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 32px;
+        }
+
+        .pet-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .pet-card {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            padding: 20px;
+            border-radius: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .pet-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.2);
+        }
+
+        .pet-card-emoji {
+            font-size: 80px;
+            margin-bottom: 10px;
+        }
+
+        .pet-card-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2d3436;
+        }
+
+        .pet-card-rarity {
+            font-size: 14px;
+            color: #636e72;
+            margin-top: 5px;
+        }
+
+        /* Nachrichten */
+        .message {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            box-shadow: 0 6px 25px rgba(0,0,0,0.3);
+            z-index: 2000;
+            animation: slideDown 0.5s ease;
+            display: none;
+        }
+
+        @keyframes slideDown {
+            from {
+                top: -100px;
+                opacity: 0;
+            }
+            to {
+                top: 100px;
+                opacity: 1;
+            }
+        }
+
+        .mini-game-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            margin-top: 20px;
+            grid-column: 1 / -1;
+        }
+
+        .mini-game-panel h2 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .mini-game-btn {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .mini-game-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .click-game {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .click-target {
+            font-size: 100px;
+            cursor: pointer;
+            display: inline-block;
+            transition: transform 0.1s;
+        }
+
+        .click-target:active {
+            transform: scale(0.9);
+        }
+
+        .click-score {
+            font-size: 24px;
+            color: #667eea;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .xp-bar-container {
+            background: #ddd;
+            height: 15px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .xp-bar {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 1024px) {
+            .game-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🐾 Adopt Me - Haustier Spiel 🐾</h1>
+    
+    <div class="game-container">
+        <!-- Linke Sidebar: Statistiken -->
+        <div class="stats-panel">
+            <h2>💰 Deine Statistiken</h2>
+            <div class="money-display">
+                💎 <span id="money">100</span> Münzen
+            </div>
+            
+            <div id="pet-stats" style="display: none;">
+                <div class="stat-item">
+                    <div class="stat-label">🍖 Hunger</div>
+                    <div class="stat-bar">
+                        <div class="stat-fill hunger-fill" id="hunger-bar" style="width: 100%;">100%</div>
+                    </div>
+                </div>
+                
+                <div class="stat-item">
+                    <div class="stat-label">😊 Glück</div>
+                    <div class="stat-bar">
+                        <div class="stat-fill happiness-fill" id="happiness-bar" style="width: 100%;">100%</div>
+                    </div>
+                </div>
+                
+                <div class="stat-item">
+                    <div class="stat-label">❤️ Gesundheit</div>
+                    <div class="stat-bar">
+                        <div class="stat-fill health-fill" id="health-bar" style="width: 100%;">100%</div>
+                    </div>
+                </div>
+                
+                <div class="stat-item">
+                    <div class="stat-label">⚡ Energie</div>
+                    <div class="stat-bar">
+                        <div class="stat-fill energy-fill" id="energy-bar" style="width: 100%;">100%</div>
+                    </div>
+                </div>
+
+                <div class="stat-item">
+                    <div class="stat-label">🌟 Erfahrung</div>
+                    <div class="xp-bar-container">
+                        <div class="xp-bar" id="xp-bar" style="width: 0%;"></div>
+                    </div>
+                    <div style="text-align: center; margin-top: 5px; font-weight: bold; color: #667eea;">
+                        <span id="xp-text">0 / 100 XP</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mittlerer Bereich: Haustier -->
+        <div class="pet-area">
+            <div id="no-pet" class="no-pet">
+                <h2>🏠 Du hast noch kein Haustier!</h2>
+                <button class="adopt-btn" onclick="openAdoptModal()">🐾 Haustier adoptieren!</button>
+            </div>
+
+            <div id="pet-display" class="pet-display" style="display: none;">
+                <div class="pet-name" id="pet-name">Mein Haustier</div>
+                <div class="pet-level">Level <span id="pet-level">1</span> • <span id="pet-type">Hund</span></div>
+                <div class="pet-emoji" id="pet-emoji" onclick="petPet()">🐶</div>
+                <div class="pet-mood" id="pet-mood">Dein Haustier ist glücklich! 😊</div>
+                
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="feedPet()">
+                        <span>🍖</span> Füttern
+                    </button>
+                    <button class="action-btn" onclick="playWithPet()">
+                        <span>🎾</span> Spielen
+                    </button>
+                    <button class="action-btn" onclick="healPet()">
+                        <span>💊</span> Heilen
+                    </button>
+                    <button class="action-btn" onclick="sleepPet()">
+                        <span>😴</span> Schlafen
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rechte Sidebar: Shop -->
+        <div class="shop-panel">
+            <h2>🛒 Shop</h2>
+            
+            <div class="shop-item" onclick="buyItem('food', 10, 'hunger')">
+                <div class="shop-item-name">🍖 Futter</div>
+                <div class="shop-item-price">💎 10 Münzen</div>
+                <div class="shop-item-desc">+30 Hunger</div>
+            </div>
+            
+            <div class="shop-item" onclick="buyItem('toy', 15, 'happiness')">
+                <div class="shop-item-name">🎾 Spielzeug</div>
+                <div class="shop-item-price">💎 15 Münzen</div>
+                <div class="shop-item-desc">+30 Glück</div>
+            </div>
+            
+            <div class="shop-item" onclick="buyItem('medicine', 25, 'health')">
+                <div class="shop-item-name">💊 Medizin</div>
+                <div class="shop-item-price">💎 25 Münzen</div>
+                <div class="shop-item-desc">+40 Gesundheit</div>
+            </div>
+            
+            <div class="shop-item" onclick="buyItem('bed', 20, 'energy')">
+                <div class="shop-item-name">🛏️ Bett</div>
+                <div class="shop-item-price">💎 20 Münzen</div>
+                <div class="shop-item-desc">+40 Energie</div>
+            </div>
+
+            <div class="shop-item" onclick="buyItem('superfood', 50, 'all')">
+                <div class="shop-item-name">🌟 Super-Futter</div>
+                <div class="shop-item-price">💎 50 Münzen</div>
+                <div class="shop-item-desc">+20 Alles!</div>
+            </div>
+        </div>
+
+        <!-- Mini-Spiele Bereich -->
+        <div class="mini-game-panel">
+            <h2>🎮 Mini-Spiele - Verdiene Münzen!</h2>
+            <button class="mini-game-btn" onclick="startClickGame()">🎯 Klick-Spiel starten (30 Sek.)</button>
+            
+            <div class="click-game" id="click-game">
+                <div class="click-score">Zeit: <span id="game-time">30</span>s | Klicks: <span id="click-count">0</span></div>
+                <div class="click-target" id="click-target" onclick="clickTarget()">🎯</div>
+                <div style="margin-top: 10px; font-size: 16px; color: #636e72;">
+                    Klicke so schnell wie möglich auf das Ziel!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal für Haustier-Adoption -->
+    <div class="modal" id="adopt-modal">
+        <div class="modal-content">
+            <h2>🐾 Wähle dein Haustier! 🐾</h2>
+            <div class="pet-grid">
+                <!-- Häufige Haustiere -->
+                <div class="pet-card" onclick="adoptPet('🐶', 'Hund', 'Häufig')">
+                    <div class="pet-card-emoji">🐶</div>
+                    <div class="pet-card-name">Hund</div>
+                    <div class="pet-card-rarity">⭐ Häufig</div>
+                </div>
+                
+                <div class="pet-card" onclick="adoptPet('🐱', 'Katze', 'Häufig')">
+                    <div class="pet-card-emoji">🐱</div>
+                    <div class="pet-card-name">Katze</div>
+                    <div class="pet-card-rarity">⭐ Häufig</div>
+                </div>
+                
+                <div class="pet-card" onclick="adoptPet('🐰', 'Hase', 'Häufig')">
+                    <div class="pet-card-emoji">🐰</div>
+                    <div class="pet-card-name">Hase</div>
+                    <div class="pet-card-rarity">⭐ Häufig</div>
+                </div>
+
+                <!-- Seltene Haustiere -->
+                <div class="pet-card" onclick="adoptPet('🦊', 'Fuchs', 'Selten')">
+                    <div class="pet-card-emoji">🦊</div>
+                    <div class="pet-card-name">Fuchs</div>
+                    <div class="pet-card-rarity">⭐⭐ Selten</div>
+                </div>
+                
+                <div class="pet-card" onclick="adoptPet('🐼', 'Panda', 'Selten')">
+                    <div class="pet-card-emoji">🐼</div>
+                    <div class="pet-card-name">Panda</div>
+                    <div class="pet-card-rarity">⭐⭐ Selten</div>
+                </div>
+                
+                <div class="pet-card" onclick="adoptPet('🦁', 'Löwe', 'Selten')">
+                    <div class="pet-card-emoji">🦁</div>
+                    <div class="pet-card-name">Löwe</div>
+                    <div class="pet-card-rarity">⭐⭐ Selten</div>
+                </div>
+
+                <!-- Epische Haustiere -->
+                <div class="pet-card" onclick="adoptPet('🐉', 'Drache', 'Episch')">
+                    <div class="pet-card-emoji">🐉</div>
+                    <div class="pet-card-name">Drache</div>
+                    <div class="pet-card-rarity">⭐⭐⭐ Episch</div>
+                </div>
+                
+                <div class="pet-card" onclick="adoptPet('🦄', 'Einhorn', 'Episch')">
+                    <div class="pet-card-emoji">🦄</div>
+                    <div class="pet-card-name">Einhorn</div>
+                    <div class="pet-card-rarity">⭐⭐⭐ Episch</div>
+                </div>
+                
+                <div class="pet-card" onclick="adoptPet('🦖', 'Dino', 'Episch')">
+                    <div class="pet-card-emoji">🦖</div>
+                    <div class="pet-card-name">Dino</div>
+                    <div class="pet-card-rarity">⭐⭐⭐ Episch</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nachricht -->
+    <div class="message" id="message"></div>
+
+    <script>
+        // ========================================================
+        // 🎮 SPIEL-DATEN
+        // ========================================================
+        
+        let gameData = {
+            money: 100,
+            pet: null,
+            stats: {
+                hunger: 100,
+                happiness: 100,
+                health: 100,
+                energy: 100
+            },
+            level: 1,
+            xp: 0,
+            xpNeeded: 100
+        };
+
+        let statDecayInterval = null;
+        let clickGameInterval = null;
+        let clickGameTimeLeft = 0;
+        let clickCount = 0;
+
+        // ========================================================
+        // 🏠 HAUSTIER ADOPTIEREN
+        // ========================================================
+        
+        function openAdoptModal() {
+            document.getElementById('adopt-modal').style.display = 'flex';
+        }
+
+        function adoptPet(emoji, type, rarity) {
+            let name = prompt('Wie möchtest du dein ' + type + ' nennen?', 'Fluffy');
+            if (name) {
+                gameData.pet = {
+                    emoji: emoji,
+                    name: name,
+                    type: type,
+                    rarity: rarity
+                };
+                
+                document.getElementById('adopt-modal').style.display = 'none';
+                document.getElementById('no-pet').style.display = 'none';
+                document.getElementById('pet-display').style.display = 'block';
+                document.getElementById('pet-stats').style.display = 'block';
+                
+                updatePetDisplay();
+                startStatDecay();
+                
+                showMessage('🎉 Herzlich willkommen, ' + name + '! 🎉');
+            }
+        }
+
+        // ========================================================
+        // 🎨 ANZEIGE AKTUALISIEREN
+        // ========================================================
+        
+        function updatePetDisplay() {
+            if (gameData.pet) {
+                document.getElementById('pet-name').textContent = gameData.pet.name;
+                document.getElementById('pet-emoji').textContent = gameData.pet.emoji;
+                document.getElementById('pet-type').textContent = gameData.pet.type;
+                document.getElementById('pet-level').textContent = gameData.level;
+                
+                updateStats();
+                updateMood();
+                updateXPBar();
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('money').textContent = gameData.money;
+            
+            if (gameData.pet) {
+                ['hunger', 'happiness', 'health', 'energy'].forEach(stat => {
+                    let value = Math.max(0, Math.min(100, gameData.stats[stat]));
+                    let bar = document.getElementById(stat + '-bar');
+                    bar.style.width = value + '%';
+                    bar.textContent = Math.round(value) + '%';
+                });
+            }
+        }
+
+        function updateXPBar() {
+            let percentage = (gameData.xp / gameData.xpNeeded) * 100;
+            document.getElementById('xp-bar').style.width = percentage + '%';
+            document.getElementById('xp-text').textContent = gameData.xp + ' / ' + gameData.xpNeeded + ' XP';
+        }
+
+        function updateMood() {
+            let avgStat = (gameData.stats.hunger + gameData.stats.happiness + 
+                          gameData.stats.health + gameData.stats.energy) / 4;
+            
+            let mood = '';
+            if (avgStat >= 80) {
+                mood = 'Dein Haustier ist super glücklich! 😄✨';
+            } else if (avgStat >= 60) {
+                mood = 'Dein Haustier ist zufrieden! 😊';
+            } else if (avgStat >= 40) {
+                mood = 'Dein Haustier braucht Aufmerksamkeit! 😐';
+            } else if (avgStat >= 20) {
+                mood = 'Dein Haustier ist traurig! 😢';
+            } else {
+                mood = 'Dein Haustier braucht dringend Hilfe! 😭💔';
+            }
+            
+            document.getElementById('pet-mood').textContent = mood;
+        }
+
+        // ========================================================
+        // 🎮 AKTIONEN
+        // ========================================================
+        
+        function feedPet() {
+            if (!gameData.pet) return;
+            
+            if (gameData.stats.hunger >= 100) {
+                showMessage('Dein Haustier ist nicht hungrig! 🍖');
+                return;
+            }
+            
+            gameData.stats.hunger = Math.min(100, gameData.stats.hunger + 25);
+            addXP(10);
+            updatePetDisplay();
+            animatePet();
+            showMessage('Nom nom nom! 😋');
+        }
+
+        function playWithPet() {
+            if (!gameData.pet) return;
+            
+            if (gameData.stats.energy < 20) {
+                showMessage('Dein Haustier ist zu müde zum Spielen! 😴');
+                return;
+            }
+            
+            gameData.stats.happiness = Math.min(100, gameData.stats.happiness + 20);
+            gameData.stats.energy = Math.max(0, gameData.stats.energy - 15);
+            gameData.stats.hunger = Math.max(0, gameData.stats.hunger - 10);
+            addXP(15);
+            updatePetDisplay();
+            animatePet();
+            showMessage('Yay, das macht Spaß! 🎾✨');
+        }
+
+        function healPet() {
+            if (!gameData.pet) return;
+            
+            if (gameData.stats.health >= 100) {
+                showMessage('Dein Haustier ist schon gesund! ❤️');
+                return;
+            }
+            
+            gameData.stats.health = Math.min(100, gameData.stats.health + 30);
+            addXP(12);
+            updatePetDisplay();
+            animatePet();
+            showMessage('Dein Haustier fühlt sich besser! 💊✨');
+        }
+
+        function sleepPet() {
+            if (!gameData.pet) return;
+            
+            if (gameData.stats.energy >= 100) {
+                showMessage('Dein Haustier ist nicht müde! ⚡');
+                return;
+            }
+            
+            gameData.stats.energy = Math.min(100, gameData.stats.energy + 35);
+            gameData.stats.health = Math.min(100, gameData.stats.health + 10);
+            addXP(8);
+            updatePetDisplay();
+            showMessage('Zzzzz... Dein Haustier hat gut geschlafen! 😴💤');
+        }
+
+        function petPet() {
+            if (!gameData.pet) return;
+            
+            gameData.stats.happiness = Math.min(100, gameData.stats.happiness + 5);
+            addXP(3);
+            updatePetDisplay();
+            animatePet();
+            
+            let messages = ['❤️', '😊', '🥰', '💕', '✨'];
+            showMessage(messages[Math.floor(Math.random() * messages.length)]);
+        }
+
+        function animatePet() {
+            let petEmoji = document.getElementById('pet-emoji');
+            petEmoji.style.transform = 'scale(1.2) rotate(10deg)';
+            setTimeout(() => {
+                petEmoji.style.transform = 'scale(1) rotate(0deg)';
+            }, 200);
+        }
+
+        // ========================================================
+        // 🛒 SHOP
+        // ========================================================
+        
+        function buyItem(item, price, statType) {
+            if (!gameData.pet) {
+                showMessage('Du brauchst erst ein Haustier! 🐾');
+                return;
+            }
+            
+            if (gameData.money < price) {
+                showMessage('Nicht genug Münzen! 💎');
+                return;
+            }
+            
+            gameData.money -= price;
+            
+            if (statType === 'all') {
+                gameData.stats.hunger = Math.min(100, gameData.stats.hunger + 20);
+                gameData.stats.happiness = Math.min(100, gameData.stats.happiness + 20);
+                gameData.stats.health = Math.min(100, gameData.stats.health + 20);
+                gameData.stats.energy = Math.min(100, gameData.stats.energy + 20);
+                showMessage('🌟 Super-Futter gekauft! Alles besser! 🌟');
+            } else if (statType === 'hunger') {
+                gameData.stats.hunger = Math.min(100, gameData.stats.hunger + 30);
+                showMessage('🍖 Futter gekauft und verfüttert!');
+            } else if (statType === 'happiness') {
+                gameData.stats.happiness = Math.min(100, gameData.stats.happiness + 30);
+                showMessage('🎾 Spielzeug gekauft! Dein Haustier ist happy!');
+            } else if (statType === 'health') {
+                gameData.stats.health = Math.min(100, gameData.stats.health + 40);
+                showMessage('💊 Medizin gekauft! Gesundheit verbessert!');
+            } else if (statType === 'energy') {
+                gameData.stats.energy = Math.min(100, gameData.stats.energy + 40);
+                showMessage('🛏️ Bett gekauft! Energie aufgeladen!');
+            }
+            
+            addXP(5);
+            updatePetDisplay();
+            animatePet();
+        }
+
+        // ========================================================
+        // 🌟 LEVEL & XP SYSTEM
+        // ========================================================
+        
+        function addXP(amount) {
+            gameData.xp += amount;
+            
+            if (gameData.xp >= gameData.xpNeeded) {
+                levelUp();
+            }
+            
+            updateXPBar();
+        }
+
+        function levelUp() {
+            gameData.level++;
+            gameData.xp = 0;
+            gameData.xpNeeded = Math.floor(gameData.xpNeeded * 1.5);
+            gameData.money += 50;
+            
+            // Alle Stats auffüllen beim Level Up
+            gameData.stats.hunger = 100;
+            gameData.stats.happiness = 100;
+            gameData.stats.health = 100;
+            gameData.stats.energy = 100;
+            
+            updatePetDisplay();
+            showMessage('🎉 LEVEL UP! Level ' + gameData.level + '! +50 Münzen! 🎉');
+            
+            // Konfetti-Effekt (simuliert)
+            let petEmoji = document.getElementById('pet-emoji');
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    petEmoji.style.transform = 'scale(1.3) rotate(' + (Math.random() * 30 - 15) + 'deg)';
+                    setTimeout(() => {
+                        petEmoji.style.transform = 'scale(1) rotate(0deg)';
+                    }, 100);
+                }, i * 150);
+            }
+        }
+
+        // ========================================================
+        // ⏰ STAT VERFALL (Stats sinken über Zeit)
+        // ========================================================
+        
+        function startStatDecay() {
+            if (statDecayInterval) return;
+            
+            statDecayInterval = setInterval(() => {
+                if (gameData.pet) {
+                    // Stats sinken langsam
+                    gameData.stats.hunger = Math.max(0, gameData.stats.hunger - 0.5);
+                    gameData.stats.happiness = Math.max(0, gameData.stats.happiness - 0.3);
+                    gameData.stats.energy = Math.max(0, gameData.stats.energy - 0.4);
+                    
+                    // Gesundheit sinkt wenn andere Stats niedrig sind
+                    let avgStat = (gameData.stats.hunger + gameData.stats.happiness + gameData.stats.energy) / 3;
+                    if (avgStat < 30) {
+                        gameData.stats.health = Math.max(0, gameData.stats.health - 0.2);
+                    }
+                    
+                    updatePetDisplay();
+                }
+            }, 2000); // Alle 2 Sekunden
+        }
+
+        // ========================================================
+        // 🎮 MINI-SPIEL: CLICK GAME
+        // ========================================================
+        
+        function startClickGame() {
+            if (clickGameInterval) {
+                showMessage('Spiel läuft bereits! 🎮');
+                return;
+            }
+            
+            clickGameTimeLeft = 30;
+            clickCount = 0;
+            
+            document.getElementById('click-game').style.display = 'block';
+            document.getElementById('game-time').textContent = clickGameTimeLeft;
+            document.getElementById('click-count').textContent = clickCount;
+            
+            moveTarget();
+            
+            clickGameInterval = setInterval(() => {
+                clickGameTimeLeft--;
+                document.getElementById('game-time').textContent = clickGameTimeLeft;
+                
+                if (clickGameTimeLeft <= 0) {
+                    endClickGame();
+                }
+            }, 1000);
+        }
+
+        function clickTarget() {
+            if (!clickGameInterval) return;
+            
+            clickCount++;
+            document.getElementById('click-count').textContent = clickCount;
+            moveTarget();
+            
+            // Sound-Effekt (visual feedback)
+            let target = document.getElementById('click-target');
+            target.style.transform = 'scale(0.8) rotate(20deg)';
+            setTimeout(() => {
+                target.style.transform = 'scale(1) rotate(0deg)';
+            }, 100);
+        }
+
+        function moveTarget() {
+            let target = document.getElementById('click-target');
+            let emojis = ['🎯', '⭐', '💎', '🎪', '🎨', '🎭', '🎪'];
+            target.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        }
+
+        function endClickGame() {
+            clearInterval(clickGameInterval);
+            clickGameInterval = null;
+            
+            let coinsEarned = clickCount * 2;
+            gameData.money += coinsEarned;
+            
+            document.getElementById('click-game').style.display = 'none';
+            updateStats();
+            
+            showMessage('🎉 Spiel beendet! ' + clickCount + ' Klicks = ' + coinsEarned + ' Münzen! 💎');
+        }
+
+        // ========================================================
+        // 💬 NACHRICHTEN
+        // ========================================================
+        
+        function showMessage(text) {
+            let msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.style.display = 'block';
+            
+            setTimeout(() => {
+                msg.style.display = 'none';
+            }, 2000);
+        }
+
+        // ========================================================
+        // 💾 SPEICHERN & LADEN
+        // ========================================================
+        
+        function saveGame() {
+            localStorage.setItem('adoptMeGame', JSON.stringify(gameData));
+        }
+
+        function loadGame() {
+            let saved = localStorage.getItem('adoptMeGame');
+            if (saved) {
+                gameData = JSON.parse(saved);
+                
+                if (gameData.pet) {
+                    document.getElementById('no-pet').style.display = 'none';
+                    document.getElementById('pet-display').style.display = 'block';
+                    document.getElementById('pet-stats').style.display = 'block';
+                    updatePetDisplay();
+                    startStatDecay();
+                }
+            }
+        }
+
+        // Auto-Save alle 10 Sekunden
+        setInterval(saveGame, 10000);
+
+        // ========================================================
+        // 🎬 SPIEL STARTEN
+        // ========================================================
+        
+        window.onload = function() {
+            loadGame();
+            updateStats();
+        };
+
+        // Modal schließen wenn außerhalb geklickt wird
+        window.onclick = function(event) {
+            let modal = document.getElementById('adopt-modal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        };
+    </script>
+</body>
+</html>
+

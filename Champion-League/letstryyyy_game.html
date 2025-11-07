@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LetsTryyyy Streaming Empire</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(145, 70, 255, 0.8);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 20px rgba(145, 70, 255, 0.5); }
+            to { text-shadow: 0 0 30px rgba(145, 70, 255, 1); }
+        }
+
+        .stream-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #e91916;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .live-dot {
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .game-area {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .main-stream {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .stream-video {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            padding: 80px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .stream-video:hover {
+            transform: scale(1.02);
+        }
+
+        .stream-video:active {
+            transform: scale(0.98);
+        }
+
+        .streamer-emoji {
+            font-size: 120px;
+            animation: bounce 1s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #ffd700;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .click-button {
+            width: 100%;
+            padding: 30px;
+            font-size: 1.5em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #9146ff 0%, #772ce8 100%);
+            border: none;
+            border-radius: 15px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 20px rgba(145, 70, 255, 0.4);
+        }
+
+        .click-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(145, 70, 255, 0.6);
+        }
+
+        .click-button:active {
+            transform: translateY(0);
+        }
+
+        .chat-sidebar {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .chat-message {
+            margin-bottom: 12px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .chat-username {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .upgrades-section {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .upgrades-section h2 {
+            margin-bottom: 20px;
+            font-size: 2em;
+            text-align: center;
+        }
+
+        .upgrades-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .upgrade-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .upgrade-card:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-3px);
+        }
+
+        .upgrade-card.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .upgrade-card.locked:hover {
+            transform: none;
+        }
+
+        .upgrade-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .upgrade-icon {
+            font-size: 2em;
+        }
+
+        .upgrade-count {
+            background: rgba(145, 70, 255, 0.5);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .upgrade-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .upgrade-description {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+
+        .upgrade-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+        }
+
+        .upgrade-cost {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .upgrade-production {
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .achievements-section {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .achievements-section h2 {
+            margin-bottom: 20px;
+            font-size: 2em;
+            text-align: center;
+        }
+
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .achievement {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+
+        .achievement.unlocked {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #333;
+            border-color: #ffd700;
+            animation: unlockShine 1s ease-out;
+        }
+
+        @keyframes unlockShine {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .achievement-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .achievement.locked .achievement-icon {
+            filter: grayscale(100%);
+            opacity: 0.5;
+        }
+
+        .achievement-name {
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .floating-number {
+            position: absolute;
+            font-size: 2em;
+            font-weight: bold;
+            color: #ffd700;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px);
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .game-area {
+                grid-template-columns: 1fr;
+            }
+            
+            .upgrades-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .save-info {
+            text-align: center;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 LetsTryyyy Streaming Empire 🎮</h1>
+            <div class="stream-status">
+                <div class="live-dot"></div>
+                <span>LIVE</span>
+            </div>
+        </div>
+
+        <div class="game-area">
+            <div class="main-stream">
+                <div class="stream-video" id="streamVideo">
+                    <div class="streamer-emoji">🎮</div>
+                    <h2>Stream läuft!</h2>
+                </div>
+
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="viewers">0</div>
+                        <div class="stat-label">👥 Zuschauer</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="viewersPerSecond">0</div>
+                        <div class="stat-label">📈 Zuschauer/Sek</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="clickPower">1</div>
+                        <div class="stat-label">💪 Click Power</div>
+                    </div>
+                </div>
+
+                <button class="click-button" id="clickButton">
+                    🖱️ Stream Raiden! 🖱️
+                </button>
+            </div>
+
+            <div class="chat-sidebar">
+                <div class="chat-header">💬 Live Chat</div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-message">
+                        <span class="chat-username" style="color: #9146ff;">LetsTryyyy:</span>
+                        <span>Willkommen im Stream! 🎮</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="upgrades-section">
+            <h2>🛒 Shop & Upgrades</h2>
+            <div class="upgrades-grid" id="upgradesGrid"></div>
+        </div>
+
+        <div class="achievements-section">
+            <h2>🏆 Achievements</h2>
+            <div class="achievements-grid" id="achievementsGrid"></div>
+        </div>
+
+        <div class="save-info">
+            💾 Dein Fortschritt wird automatisch gespeichert!
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        let gameState = {
+            viewers: 0,
+            totalClicks: 0,
+            clickPower: 1,
+            viewersPerSecond: 0,
+            upgrades: {},
+            achievements: {},
+            startTime: Date.now()
+        };
+
+        // Upgrades Definition
+        const upgrades = [
+            {
+                id: 'webcam',
+                name: 'HD Webcam',
+                icon: '📷',
+                description: 'Bessere Bildqualität zieht mehr Viewer an',
+                baseCost: 15,
+                baseProduction: 0.1,
+                costMultiplier: 1.15
+            },
+            {
+                id: 'microphone',
+                name: 'Premium Mikrofon',
+                icon: '🎤',
+                description: 'Kristallklarer Sound!',
+                baseCost: 50,
+                baseProduction: 0.5,
+                costMultiplier: 1.15
+            },
+            {
+                id: 'rgb',
+                name: 'RGB Beleuchtung',
+                icon: '💡',
+                description: 'Mehr RGB = Mehr Viewer (Fakt!)',
+                baseCost: 150,
+                baseProduction: 2,
+                costMultiplier: 1.15
+            },
+            {
+                id: 'mod',
+                name: 'Moderator',
+                icon: '🛡️',
+                description: 'Hilft dir beim Chat moderieren',
+                baseCost: 300,
+                baseProduction: 5,
+                costMultiplier: 1.15
+            },
+            {
+                id: 'greenscreen',
+                name: 'Greenscreen',
+                icon: '🎬',
+                description: 'Professioneller Content!',
+                baseCost: 800,
+                baseProduction: 12,
+                costMultiplier: 1.15
+            },
+            {
+                id: 'editor',
+                name: 'Video Editor',
+                icon: '✂️',
+                description: 'Erstellt Highlights für YouTube',
+                baseCost: 2000,
+                baseProduction: 30,
+                costMultiplier: 1.15
+            },
+            {
+                id: 'sponsor',
+                name: 'Sponsor Deal',
+                icon: '💰',
+                description: 'Werbung bringt neue Viewer',
+                baseCost: 5000,
+                baseProduction: 80,
+                costMultiplier: 1.15
+            },
+            {
+                id: 'partnership',
+                name: 'Twitch Partnership',
+                icon: '⭐',
+                description: 'Der heilige Gral!',
+                baseCost: 15000,
+                baseProduction: 250,
+                costMultiplier: 1.15
+            },
+            {
+                id: 'viral',
+                name: 'Viraler Clip',
+                icon: '🔥',
+                description: 'Ein Clip geht viral!',
+                baseCost: 40000,
+                baseProduction: 700,
+                costMultiplier: 1.15
+            },
+            {
+                id: 'studio',
+                name: 'Streaming Studio',
+                icon: '🏢',
+                description: 'Professionelles Setup',
+                baseCost: 100000,
+                baseProduction: 2000,
+                costMultiplier: 1.15
+            }
+        ];
+
+        // Achievements Definition
+        const achievements = [
+            { id: 'first_click', name: 'Erster Klick', icon: '👆', requirement: () => gameState.totalClicks >= 1 },
+            { id: 'hundred_viewers', name: '100 Zuschauer', icon: '💯', requirement: () => gameState.viewers >= 100 },
+            { id: 'thousand_viewers', name: '1K Zuschauer', icon: '🎊', requirement: () => gameState.viewers >= 1000 },
+            { id: 'tenk_viewers', name: '10K Zuschauer', icon: '🌟', requirement: () => gameState.viewers >= 10000 },
+            { id: 'hundredk_viewers', name: '100K Zuschauer', icon: '💎', requirement: () => gameState.viewers >= 100000 },
+            { id: 'million_viewers', name: '1M Zuschauer', icon: '👑', requirement: () => gameState.viewers >= 1000000 },
+            { id: 'first_upgrade', name: 'Erstes Upgrade', icon: '🛒', requirement: () => Object.values(gameState.upgrades).some(u => u > 0) },
+            { id: 'ten_upgrades', name: '10 Upgrades', icon: '📦', requirement: () => Object.values(gameState.upgrades).reduce((a, b) => a + b, 0) >= 10 },
+            { id: 'click_master', name: 'Click Master', icon: '🖱️', requirement: () => gameState.totalClicks >= 1000 },
+            { id: 'passive_income', name: 'Passives Einkommen', icon: '💸', requirement: () => gameState.viewersPerSecond >= 100 }
+        ];
+
+        // Chat Messages
+        const chatMessages = [
+            { username: 'GamingPro123', message: 'PogChamp', color: '#ff6b6b' },
+            { username: 'StreamFan99', message: 'Hype! 🔥', color: '#4ecdc4' },
+            { username: 'NoobMaster', message: 'Wie gehts?', color: '#95e1d3' },
+            { username: 'ChatLurker', message: 'Hi letstryyyy!', color: '#f38181' },
+            { username: 'ModSquad', message: 'Guter Content!', color: '#9146ff' },
+            { username: 'SubTrain', message: 'Resub Hype!', color: '#ffd93d' },
+            { username: 'DonationKing', message: 'Donation incoming!', color: '#6bcf7f' },
+            { username: 'EmoteSpammer', message: 'Kappa Kappa Kappa', color: '#ff9ff3' },
+            { username: 'FirstTimer', message: 'Erster Stream!', color: '#feca57' },
+            { username: 'VIPViewer', message: 'Gutes Setup!', color: '#48dbfb' }
+        ];
+
+        // Initialize game
+        function init() {
+            loadGame();
+            initializeUpgrades();
+            renderUpgrades();
+            renderAchievements();
+            
+            // Event listeners
+            document.getElementById('clickButton').addEventListener('click', handleClick);
+            
+            // Game loops
+            setInterval(gameLoop, 100);
+            setInterval(addChatMessage, 3000);
+            setInterval(saveGame, 5000);
+            
+            updateDisplay();
+        }
+
+        function initializeUpgrades() {
+            upgrades.forEach(upgrade => {
+                if (!gameState.upgrades[upgrade.id]) {
+                    gameState.upgrades[upgrade.id] = 0;
+                }
+            });
+        }
+
+        function handleClick(e) {
+            gameState.viewers += gameState.clickPower;
+            gameState.totalClicks++;
+            
+            // Floating number effect
+            const rect = e.target.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            createFloatingNumber(e.currentTarget, `+${gameState.clickPower}`, x, y);
+            
+            updateDisplay();
+            checkAchievements();
+        }
+
+        function createFloatingNumber(container, text, x, y) {
+            const floatingNum = document.createElement('div');
+            floatingNum.className = 'floating-number';
+            floatingNum.textContent = text;
+            floatingNum.style.left = x + 'px';
+            floatingNum.style.top = y + 'px';
+            
+            const streamVideo = document.getElementById('streamVideo');
+            streamVideo.style.position = 'relative';
+            streamVideo.appendChild(floatingNum);
+            
+            setTimeout(() => floatingNum.remove(), 1000);
+        }
+
+        function gameLoop() {
+            // Calculate viewers per second
+            gameState.viewersPerSecond = 0;
+            upgrades.forEach(upgrade => {
+                const count = gameState.upgrades[upgrade.id] || 0;
+                gameState.viewersPerSecond += upgrade.baseProduction * count;
+            });
+            
+            // Add passive viewers (every 0.1 seconds)
+            gameState.viewers += gameState.viewersPerSecond * 0.1;
+            
+            updateDisplay();
+            checkAchievements();
+        }
+
+        function updateDisplay() {
+            document.getElementById('viewers').textContent = formatNumber(Math.floor(gameState.viewers));
+            document.getElementById('viewersPerSecond').textContent = formatNumber(gameState.viewersPerSecond.toFixed(1));
+            document.getElementById('clickPower').textContent = formatNumber(gameState.clickPower);
+            
+            renderUpgrades();
+        }
+
+        function formatNumber(num) {
+            num = parseFloat(num);
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(2) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return Math.floor(num).toString();
+        }
+
+        function renderUpgrades() {
+            const grid = document.getElementById('upgradesGrid');
+            grid.innerHTML = '';
+            
+            upgrades.forEach(upgrade => {
+                const count = gameState.upgrades[upgrade.id] || 0;
+                const cost = Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, count));
+                const canAfford = gameState.viewers >= cost;
+                
+                const card = document.createElement('div');
+                card.className = 'upgrade-card' + (canAfford ? '' : ' locked');
+                card.innerHTML = `
+                    <div class="upgrade-header">
+                        <span class="upgrade-icon">${upgrade.icon}</span>
+                        <span class="upgrade-count">${count}</span>
+                    </div>
+                    <div class="upgrade-name">${upgrade.name}</div>
+                    <div class="upgrade-description">${upgrade.description}</div>
+                    <div class="upgrade-stats">
+                        <span class="upgrade-cost">💰 ${formatNumber(cost)}</span>
+                        <span class="upgrade-production">+${formatNumber(upgrade.baseProduction)}/s</span>
+                    </div>
+                `;
+                
+                if (canAfford) {
+                    card.addEventListener('click', () => buyUpgrade(upgrade));
+                }
+                
+                grid.appendChild(card);
+            });
+        }
+
+        function buyUpgrade(upgrade) {
+            const count = gameState.upgrades[upgrade.id] || 0;
+            const cost = Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, count));
+            
+            if (gameState.viewers >= cost) {
+                gameState.viewers -= cost;
+                gameState.upgrades[upgrade.id]++;
+                
+                // Some upgrades also increase click power
+                if (upgrade.id === 'webcam' || upgrade.id === 'rgb') {
+                    gameState.clickPower++;
+                }
+                
+                updateDisplay();
+                checkAchievements();
+                saveGame();
+            }
+        }
+
+        function renderAchievements() {
+            const grid = document.getElementById('achievementsGrid');
+            grid.innerHTML = '';
+            
+            achievements.forEach(achievement => {
+                const unlocked = gameState.achievements[achievement.id] || false;
+                
+                const card = document.createElement('div');
+                card.className = 'achievement' + (unlocked ? ' unlocked' : ' locked');
+                card.innerHTML = `
+                    <div class="achievement-icon">${achievement.icon}</div>
+                    <div class="achievement-name">${achievement.name}</div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+
+        function checkAchievements() {
+            let newAchievement = false;
+            
+            achievements.forEach(achievement => {
+                if (!gameState.achievements[achievement.id] && achievement.requirement()) {
+                    gameState.achievements[achievement.id] = true;
+                    newAchievement = true;
+                    showAchievementNotification(achievement);
+                }
+            });
+            
+            if (newAchievement) {
+                renderAchievements();
+            }
+        }
+
+        function showAchievementNotification(achievement) {
+            // Add chat message for achievement
+            const chatContainer = document.getElementById('chatMessages');
+            const message = document.createElement('div');
+            message.className = 'chat-message';
+            message.style.background = 'linear-gradient(135deg, #ffd700 0%, #ffed4e 100%)';
+            message.style.color = '#333';
+            message.innerHTML = `
+                <span class="chat-username" style="color: #9146ff;">🏆 Achievement:</span>
+                <span>${achievement.icon} ${achievement.name}</span>
+            `;
+            chatContainer.appendChild(message);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addChatMessage() {
+            const msg = chatMessages[Math.floor(Math.random() * chatMessages.length)];
+            const chatContainer = document.getElementById('chatMessages');
+            
+            const message = document.createElement('div');
+            message.className = 'chat-message';
+            message.innerHTML = `
+                <span class="chat-username" style="color: ${msg.color};">${msg.username}:</span>
+                <span>${msg.message}</span>
+            `;
+            
+            chatContainer.appendChild(message);
+            
+            // Keep only last 10 messages
+            while (chatContainer.children.length > 10) {
+                chatContainer.removeChild(chatContainer.firstChild);
+            }
+            
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function saveGame() {
+            localStorage.setItem('letstryyyGame', JSON.stringify(gameState));
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('letstryyyGame');
+            if (saved) {
+                const loadedState = JSON.parse(saved);
+                gameState = { ...gameState, ...loadedState };
+            }
+        }
+
+        // Start the game
+        init();
+    </script>
+</body>
+</html>

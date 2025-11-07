@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Clicker 🍪</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1400px;
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .stats-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            opacity: 0.9;
+        }
+
+        .stat-item .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .game-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            position: relative;
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        .cookie-container {
+            position: relative;
+        }
+
+        .cookie {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 150px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            user-select: none;
+            position: relative;
+        }
+
+        .cookie:hover {
+            transform: scale(1.05);
+        }
+
+        .cookie:active {
+            transform: scale(0.95);
+        }
+
+        .cookie::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3), transparent);
+        }
+
+        .click-effect {
+            position: absolute;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 24px;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            z-index: 1000;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px);
+            }
+        }
+
+        .score-display {
+            text-align: center;
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .score-display .cookies {
+            color: #667eea;
+            font-size: 48px;
+        }
+
+        .upgrades-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .upgrades-panel h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px 0;
+            z-index: 10;
+        }
+
+        .upgrade-item {
+            background: linear-gradient(135deg, #f6f6f6 0%, #e9e9e9 100%);
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .upgrade-item:hover:not(.disabled) {
+            transform: translateX(-5px);
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .upgrade-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .upgrade-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .upgrade-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .upgrade-icon {
+            font-size: 24px;
+        }
+
+        .upgrade-count {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .upgrade-description {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .upgrade-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .upgrade-cost {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .upgrade-production {
+            color: #28a745;
+            font-size: 14px;
+        }
+
+        .achievements-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .achievements-section h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 8px;
+        }
+
+        .achievement {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .achievement.unlocked {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            box-shadow: 0 4px 15px rgba(253, 160, 133, 0.5);
+        }
+
+        .achievement:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 100;
+            margin-bottom: 5px;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .particle {
+            position: absolute;
+            font-size: 30px;
+            animation: fall 3s linear forwards;
+        }
+
+        @keyframes fall {
+            0% {
+                opacity: 1;
+                transform: translateY(0) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(100vh) rotate(360deg);
+            }
+        }
+
+        .reset-button {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .reset-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(238, 90, 111, 0.4);
+        }
+
+        /* Scrollbar Styling */
+        .upgrades-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .upgrades-panel::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .upgrades-panel::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        .upgrades-panel::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+            }
+
+            .cookie {
+                width: 200px;
+                height: 200px;
+                font-size: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+    
+    <div class="container">
+        <!-- Left Panel: Stats -->
+        <div class="panel stats-panel">
+            <div class="stat-item">
+                <h3>🍪 Gesamt-Cookies</h3>
+                <div class="value" id="totalCookies">0</div>
+            </div>
+            <div class="stat-item">
+                <h3>⚡ Pro Klick</h3>
+                <div class="value" id="perClick">1</div>
+            </div>
+            <div class="stat-item">
+                <h3>🚀 Pro Sekunde</h3>
+                <div class="value" id="perSecond">0</div>
+            </div>
+            <div class="stat-item">
+                <h3>👆 Klicks</h3>
+                <div class="value" id="totalClicks">0</div>
+            </div>
+
+            <div class="achievements-section">
+                <h3>🏆 Errungenschaften</h3>
+                <div class="achievements-grid" id="achievementsGrid"></div>
+            </div>
+
+            <button class="reset-button" onclick="resetGame()">🔄 Spiel Zurücksetzen</button>
+        </div>
+
+        <!-- Center Panel: Game -->
+        <div class="panel game-panel">
+            <div class="title">🍪 Cookie Clicker 🍪</div>
+            
+            <div class="score-display">
+                <div class="cookies" id="cookieCount">0</div>
+                <div>Cookies</div>
+            </div>
+
+            <div class="cookie-container">
+                <div class="cookie" id="cookie" onclick="clickCookie(event)">
+                    🍪
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Upgrades -->
+        <div class="panel upgrades-panel">
+            <h2>🛒 Upgrades kaufen</h2>
+            <div id="upgradesList"></div>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        let gameState = {
+            cookies: 0,
+            totalCookies: 0,
+            cookiesPerClick: 1,
+            cookiesPerSecond: 0,
+            totalClicks: 0,
+            upgrades: [
+                {
+                    id: 'cursor',
+                    name: 'Cursor',
+                    icon: '👆',
+                    description: 'Klickt automatisch für dich',
+                    baseCost: 15,
+                    cost: 15,
+                    count: 0,
+                    production: 0.1,
+                    multiplier: 1.15
+                },
+                {
+                    id: 'grandma',
+                    name: 'Oma',
+                    icon: '👵',
+                    description: 'Eine nette Oma backt Cookies',
+                    baseCost: 100,
+                    cost: 100,
+                    count: 0,
+                    production: 1,
+                    multiplier: 1.15
+                },
+                {
+                    id: 'farm',
+                    name: 'Cookie-Farm',
+                    icon: '🌾',
+                    description: 'Baut Cookie-Zutaten an',
+                    baseCost: 500,
+                    cost: 500,
+                    count: 0,
+                    production: 8,
+                    multiplier: 1.15
+                },
+                {
+                    id: 'mine',
+                    name: 'Cookie-Mine',
+                    icon: '⛏️',
+                    description: 'Gräbt nach Schokoladenchips',
+                    baseCost: 3000,
+                    cost: 3000,
+                    count: 0,
+                    production: 47,
+                    multiplier: 1.15
+                },
+                {
+                    id: 'factory',
+                    name: 'Cookie-Fabrik',
+                    icon: '🏭',
+                    description: 'Massenproduziert Cookies',
+                    baseCost: 10000,
+                    cost: 10000,
+                    count: 0,
+                    production: 260,
+                    multiplier: 1.15
+                },
+                {
+                    id: 'bank',
+                    name: 'Cookie-Bank',
+                    icon: '🏦',
+                    description: 'Generiert Cookie-Zinsen',
+                    baseCost: 40000,
+                    cost: 40000,
+                    count: 0,
+                    production: 1400,
+                    multiplier: 1.15
+                },
+                {
+                    id: 'temple',
+                    name: 'Cookie-Tempel',
+                    icon: '⛩️',
+                    description: 'Beschwört heilige Cookies',
+                    baseCost: 200000,
+                    cost: 200000,
+                    count: 0,
+                    production: 7800,
+                    multiplier: 1.15
+                },
+                {
+                    id: 'wizard',
+                    name: 'Zauberer',
+                    icon: '🧙',
+                    description: 'Zaubert Cookies aus dem Nichts',
+                    baseCost: 1000000,
+                    cost: 1000000,
+                    count: 0,
+                    production: 44000,
+                    multiplier: 1.15
+                },
+                {
+                    id: 'portal',
+                    name: 'Cookie-Portal',
+                    icon: '🌀',
+                    description: 'Öffnet ein Portal zu Cookie-Dimension',
+                    baseCost: 10000000,
+                    cost: 10000000,
+                    count: 0,
+                    production: 260000,
+                    multiplier: 1.15
+                },
+                {
+                    id: 'timemachine',
+                    name: 'Zeitmaschine',
+                    icon: '⏰',
+                    description: 'Bringt Cookies aus der Vergangenheit',
+                    baseCost: 100000000,
+                    cost: 100000000,
+                    count: 0,
+                    production: 1600000,
+                    multiplier: 1.15
+                }
+            ],
+            achievements: [
+                { id: 'click1', name: 'Erster Klick', icon: '🖱️', description: 'Klicke 1 mal', condition: () => gameState.totalClicks >= 1, unlocked: false },
+                { id: 'click100', name: 'Fleißig', icon: '👆', description: 'Klicke 100 mal', condition: () => gameState.totalClicks >= 100, unlocked: false },
+                { id: 'click1000', name: 'Klick-Meister', icon: '💪', description: 'Klicke 1000 mal', condition: () => gameState.totalClicks >= 1000, unlocked: false },
+                { id: 'cookies100', name: 'Süßer Anfang', icon: '🍪', description: 'Backe 100 Cookies', condition: () => gameState.totalCookies >= 100, unlocked: false },
+                { id: 'cookies1000', name: 'Cookie-Bäcker', icon: '👨‍🍳', description: 'Backe 1000 Cookies', condition: () => gameState.totalCookies >= 1000, unlocked: false },
+                { id: 'cookies100000', name: 'Cookie-Imperium', icon: '🏰', description: 'Backe 100000 Cookies', condition: () => gameState.totalCookies >= 100000, unlocked: false },
+                { id: 'cursor10', name: 'Helfende Hände', icon: '✋', description: 'Kaufe 10 Cursors', condition: () => gameState.upgrades[0].count >= 10, unlocked: false },
+                { id: 'grandma10', name: 'Omas Armee', icon: '👵', description: 'Kaufe 10 Omas', condition: () => gameState.upgrades[1].count >= 10, unlocked: false },
+                { id: 'factory1', name: 'Industrialisierung', icon: '🏭', description: 'Kaufe eine Fabrik', condition: () => gameState.upgrades[4].count >= 1, unlocked: false },
+                { id: 'cps100', name: 'Produktion läuft', icon: '⚡', description: 'Erreiche 100 C/s', condition: () => gameState.cookiesPerSecond >= 100, unlocked: false },
+                { id: 'cps1000', name: 'Massenproduktion', icon: '🚀', description: 'Erreiche 1000 C/s', condition: () => gameState.cookiesPerSecond >= 1000, unlocked: false },
+                { id: 'allUpgrades', name: 'Sammler', icon: '🎯', description: 'Kaufe von jedem Upgrade', condition: () => gameState.upgrades.every(u => u.count > 0), unlocked: false }
+            ]
+        };
+
+        // Initialize
+        function init() {
+            loadGame();
+            renderUpgrades();
+            renderAchievements();
+            updateDisplay();
+            
+            // Production loop
+            setInterval(() => {
+                gameState.cookies += gameState.cookiesPerSecond / 10;
+                gameState.totalCookies += gameState.cookiesPerSecond / 10;
+                updateDisplay();
+                checkAchievements();
+            }, 100);
+
+            // Auto-save
+            setInterval(saveGame, 5000);
+
+            // Particle effect
+            setInterval(createParticle, 2000);
+        }
+
+        // Click Cookie
+        function clickCookie(event) {
+            gameState.cookies += gameState.cookiesPerClick;
+            gameState.totalCookies += gameState.cookiesPerClick;
+            gameState.totalClicks++;
+
+            // Visual feedback
+            const cookie = document.getElementById('cookie');
+            cookie.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                cookie.style.transform = 'scale(1)';
+            }, 100);
+
+            // Click effect
+            showClickEffect(event, gameState.cookiesPerClick);
+
+            updateDisplay();
+            updateUpgrades();
+            checkAchievements();
+        }
+
+        // Show Click Effect
+        function showClickEffect(event, amount) {
+            const effect = document.createElement('div');
+            effect.className = 'click-effect';
+            effect.textContent = '+' + formatNumber(amount);
+            effect.style.left = event.clientX + 'px';
+            effect.style.top = event.clientY + 'px';
+            document.body.appendChild(effect);
+
+            setTimeout(() => {
+                effect.remove();
+            }, 1000);
+        }
+
+        // Buy Upgrade
+        function buyUpgrade(upgradeId) {
+            const upgrade = gameState.upgrades.find(u => u.id === upgradeId);
+            
+            if (gameState.cookies >= upgrade.cost) {
+                gameState.cookies -= upgrade.cost;
+                upgrade.count++;
+                upgrade.cost = Math.ceil(upgrade.baseCost * Math.pow(upgrade.multiplier, upgrade.count));
+                
+                calculateProduction();
+                updateDisplay();
+                updateUpgrades();
+                checkAchievements();
+                saveGame();
+
+                // Visual feedback
+                createParticle();
+            }
+        }
+
+        // Calculate Production
+        function calculateProduction() {
+            gameState.cookiesPerSecond = 0;
+            gameState.upgrades.forEach(upgrade => {
+                gameState.cookiesPerSecond += upgrade.count * upgrade.production;
+            });
+        }
+
+        // Render Upgrades
+        function renderUpgrades() {
+            const list = document.getElementById('upgradesList');
+            list.innerHTML = '';
+
+            gameState.upgrades.forEach(upgrade => {
+                const div = document.createElement('div');
+                div.className = 'upgrade-item';
+                div.id = 'upgrade-' + upgrade.id;
+                div.onclick = () => buyUpgrade(upgrade.id);
+
+                div.innerHTML = `
+                    <div class="upgrade-header">
+                        <div class="upgrade-name">
+                            <span class="upgrade-icon">${upgrade.icon}</span>
+                            ${upgrade.name}
+                        </div>
+                        <div class="upgrade-count">${upgrade.count}</div>
+                    </div>
+                    <div class="upgrade-description">${upgrade.description}</div>
+                    <div class="upgrade-footer">
+                        <div class="upgrade-cost">💰 ${formatNumber(upgrade.cost)}</div>
+                        <div class="upgrade-production">+${formatNumber(upgrade.production)}/s</div>
+                    </div>
+                `;
+
+                list.appendChild(div);
+            });
+        }
+
+        // Update Upgrades Display
+        function updateUpgrades() {
+            gameState.upgrades.forEach(upgrade => {
+                const element = document.getElementById('upgrade-' + upgrade.id);
+                if (element) {
+                    if (gameState.cookies >= upgrade.cost) {
+                        element.classList.remove('disabled');
+                    } else {
+                        element.classList.add('disabled');
+                    }
+
+                    element.querySelector('.upgrade-count').textContent = upgrade.count;
+                    element.querySelector('.upgrade-cost').textContent = '💰 ' + formatNumber(upgrade.cost);
+                }
+            });
+        }
+
+        // Render Achievements
+        function renderAchievements() {
+            const grid = document.getElementById('achievementsGrid');
+            grid.innerHTML = '';
+
+            gameState.achievements.forEach(achievement => {
+                const div = document.createElement('div');
+                div.className = 'achievement';
+                div.id = 'achievement-' + achievement.id;
+                div.dataset.tooltip = achievement.description;
+                div.textContent = achievement.unlocked ? achievement.icon : '🔒';
+                
+                if (achievement.unlocked) {
+                    div.classList.add('unlocked');
+                }
+
+                grid.appendChild(div);
+            });
+        }
+
+        // Check Achievements
+        function checkAchievements() {
+            let newUnlocked = false;
+            
+            gameState.achievements.forEach(achievement => {
+                if (!achievement.unlocked && achievement.condition()) {
+                    achievement.unlocked = true;
+                    newUnlocked = true;
+                    showAchievementNotification(achievement);
+                }
+            });
+
+            if (newUnlocked) {
+                renderAchievements();
+            }
+        }
+
+        // Show Achievement Notification
+        function showAchievementNotification(achievement) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+                color: white;
+                padding: 20px 30px;
+                border-radius: 10px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+                z-index: 10000;
+                animation: slideIn 0.5s ease-out;
+                font-weight: bold;
+            `;
+            notification.innerHTML = `
+                <div style="font-size: 24px; margin-bottom: 5px;">🏆 Errungenschaften freigeschaltet!</div>
+                <div style="font-size: 18px;">${achievement.icon} ${achievement.name}</div>
+                <div style="font-size: 14px; opacity: 0.9;">${achievement.description}</div>
+            `;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.5s ease-in';
+                setTimeout(() => notification.remove(), 500);
+            }, 3000);
+        }
+
+        // Create Particle
+        function createParticle() {
+            if (gameState.cookiesPerSecond > 10) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.textContent = '🍪';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDuration = (2 + Math.random() * 2) + 's';
+                
+                document.getElementById('particles').appendChild(particle);
+                
+                setTimeout(() => particle.remove(), 4000);
+            }
+        }
+
+        // Update Display
+        function updateDisplay() {
+            document.getElementById('cookieCount').textContent = formatNumber(Math.floor(gameState.cookies));
+            document.getElementById('totalCookies').textContent = formatNumber(Math.floor(gameState.totalCookies));
+            document.getElementById('perClick').textContent = formatNumber(gameState.cookiesPerClick);
+            document.getElementById('perSecond').textContent = formatNumber(gameState.cookiesPerSecond.toFixed(1));
+            document.getElementById('totalClicks').textContent = formatNumber(gameState.totalClicks);
+        }
+
+        // Format Number
+        function formatNumber(num) {
+            if (num < 1000) return Math.floor(num).toString();
+            if (num < 1000000) return (num / 1000).toFixed(1) + 'K';
+            if (num < 1000000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num < 1000000000000) return (num / 1000000000).toFixed(1) + 'B';
+            return (num / 1000000000000).toFixed(1) + 'T';
+        }
+
+        // Save Game
+        function saveGame() {
+            localStorage.setItem('cookieClickerSave', JSON.stringify(gameState));
+        }
+
+        // Load Game
+        function loadGame() {
+            const saved = localStorage.getItem('cookieClickerSave');
+            if (saved) {
+                const savedState = JSON.parse(saved);
+                gameState.cookies = savedState.cookies || 0;
+                gameState.totalCookies = savedState.totalCookies || 0;
+                gameState.cookiesPerClick = savedState.cookiesPerClick || 1;
+                gameState.totalClicks = savedState.totalClicks || 0;
+                
+                // Load upgrades
+                if (savedState.upgrades) {
+                    savedState.upgrades.forEach((savedUpgrade, index) => {
+                        if (gameState.upgrades[index]) {
+                            gameState.upgrades[index].count = savedUpgrade.count;
+                            gameState.upgrades[index].cost = savedUpgrade.cost;
+                        }
+                    });
+                }
+
+                // Load achievements
+                if (savedState.achievements) {
+                    savedState.achievements.forEach((savedAch, index) => {
+                        if (gameState.achievements[index]) {
+                            gameState.achievements[index].unlocked = savedAch.unlocked;
+                        }
+                    });
+                }
+
+                calculateProduction();
+            }
+        }
+
+        // Reset Game
+        function resetGame() {
+            if (confirm('Möchtest du wirklich das Spiel zurücksetzen? Alle Fortschritte gehen verloren!')) {
+                localStorage.removeItem('cookieClickerSave');
+                location.reload();
+            }
+        }
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(400px); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(400px); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Start game
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Flappy Duo - Duolingo Edition</title>
+  </head>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+    <script>
+      // Vogel
+      let bird = {
+        x: 120,
+        y: 300,
+        vy: 0,
+        radius: 20
+      };
+      
+      // Spielparameter
+      let gravity = 0.7;
+      let jumpStrength = -11;
+      let score = 0;
+      let gameOver = false;
+      let gameStarted = false;
+      
+      // Level-System
+      let level = 1;
+      let pointsToNextLevel = 20;
+      let levelUpMessage = false;
+      let levelUpTimer = 0;
+      
+      // Röhren
+      let pipes = [];
+      let pipeWidth = 80;
+      let pipeGap = 200;
+      let basePipeSpeed = 4;
+      let pipeSpeed = 4;
+      let basePipeGap = 200;
+      let frameCounter = 0;
+      let pipeInterval = 90;
+      
+      // Wolken
+      let clouds = [];
+      let cloudSpeed = 0.7;
+      
+      // Münzen
+      let coins = [];
+      let coinRotation = 0;
+      
+      // Mini Gojo Animation
+      let gojoWaveOffset = 0;
+      
+      // Audio Context für Sounds
+      let audioContext;
+      
+      // Erstelle die Oberfläche
+      function setup() {
+        createCanvas(900, 600);
+        
+        // Audio Context initialisieren
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Initialisiere Wolken
+        for (let i = 0; i < 7; i++) {
+          clouds.push({
+            x: random(0, width),
+            y: random(50, 200),
+            size: random(60, 120)
+          });
+        }
+      }
+      
+      // Hauptspiel-Schleife
+      function draw() {
+        // Hintergrund
+        background(135, 206, 235); // Himmelblau
+        
+        // Sonne zeichnen
+        drawSun();
+        
+        // Wolken bewegen und zeichnen
+        for (let cloud of clouds) {
+          cloud.x -= cloudSpeed;
+          
+          // Wenn Wolke links raus ist, rechts wieder einsetzen
+          if (cloud.x + cloud.size < 0) {
+            cloud.x = width + 50;
+            cloud.y = random(50, 200);
+            cloud.size = random(60, 120);
+          }
+          
+          drawCloud(cloud);
+        }
+        
+        if (!gameStarted) {
+          // Startbildschirm
+          drawBird();
+          fill(0);
+          textSize(48);
+          textAlign(CENTER);
+          text("Flappy Duo", width/2, height/2 - 100);
+          textSize(28);
+          text("Drücke LEERTASTE zum Starten", width/2, height/2 - 30);
+          textSize(22);
+          text("LEERTASTE = Fliegen", width/2, height/2 + 20);
+          text("Sammle goldene Münzen für +3 Punkte!", width/2, height/2 + 55);
+          text("Erreiche 20 Punkte für Level-Up!", width/2, height/2 + 90);
+          return;
+        }
+        
+        if (!gameOver) {
+          // Vogel-Physik
+          bird.vy += gravity;
+          bird.y += bird.vy;
+          
+          // Level-Up prüfen
+          if (score >= pointsToNextLevel) {
+            levelUp();
+          }
+          
+          // Level-Up-Nachricht Timer
+          if (levelUpMessage) {
+            levelUpTimer++;
+            if (levelUpTimer > 120) { // 2 Sekunden
+              levelUpMessage = false;
+              levelUpTimer = 0;
+            }
+          }
+          
+          // Neue Röhren erstellen
+          frameCounter++;
+          if (frameCounter % pipeInterval === 0) {
+            createPipe();
+          }
+          
+          // Röhren bewegen und zeichnen
+          for (let i = pipes.length - 1; i >= 0; i--) {
+            pipes[i].x -= pipeSpeed;
+            
+            // Röhre zeichnen
+            drawPipe(pipes[i]);
+            
+            // Kollision prüfen
+            if (checkCollision(pipes[i])) {
+              gameOver = true;
+              playHitSound();
+            }
+            
+            // Punkte zählen
+            if (!pipes[i].passed && pipes[i].x + pipeWidth < bird.x) {
+              pipes[i].passed = true;
+              score++;
+              playScoreSound();
+            }
+            
+            // Röhre entfernen, wenn außerhalb des Bildschirms
+            if (pipes[i].x + pipeWidth < 0) {
+              pipes.splice(i, 1);
+            }
+          }
+          
+          // Münzen bewegen und zeichnen
+          coinRotation += 0.05; // Animation der Münzen
+          for (let i = coins.length - 1; i >= 0; i--) {
+            coins[i].x -= pipeSpeed;
+            
+            // Münze zeichnen
+            drawCoin(coins[i]);
+            
+            // Prüfe, ob Vogel Münze einsammelt
+            let distance = dist(bird.x, bird.y, coins[i].x, coins[i].y);
+            if (distance < bird.radius + coins[i].radius) {
+              coins.splice(i, 1);
+              score += 3; // Extra-Punkte für Münze
+              playCoinSound();
+            } else if (coins[i].x + coins[i].radius < 0) {
+              // Münze entfernen, wenn außerhalb des Bildschirms
+              coins.splice(i, 1);
+            }
+          }
+          
+          // Prüfe, ob Vogel den Boden oder die Decke berührt
+          if (bird.y + bird.radius > height || bird.y - bird.radius < 0) {
+            gameOver = true;
+            playHitSound();
+          }
+        }
+        
+        // Vogel zeichnen
+        drawBird();
+        
+        // Punktestand und Level anzeigen
+        fill(255);
+        stroke(0);
+        strokeWeight(4);
+        textSize(36);
+        textAlign(LEFT);
+        text("Level: " + level, 15, 45);
+        text("Punkte: " + score + " / " + pointsToNextLevel, 15, 90);
+        strokeWeight(1);
+        
+        // Level-Up Nachricht
+        if (levelUpMessage) {
+          push();
+          fill(88, 204, 2, 200); // Duolingo Grün mit Transparenz
+          stroke(255, 215, 0);
+          strokeWeight(5);
+          rectMode(CENTER);
+          rect(width/2, height/2, 450, 150, 25);
+          
+          fill(255);
+          noStroke();
+          textAlign(CENTER, CENTER);
+          textSize(55);
+          textStyle(BOLD);
+          text("LEVEL UP!", width/2, height/2 - 20);
+          textSize(32);
+          textStyle(NORMAL);
+          text("Level " + level, width/2, height/2 + 30);
+          pop();
+        }
+        
+        // Game Over Bildschirm
+        if (gameOver) {
+          fill(0, 0, 0, 150);
+          rect(0, 0, width, height);
+          
+          fill(255);
+          stroke(0);
+          strokeWeight(4);
+          textSize(64);
+          textAlign(CENTER);
+          text("Game Over!", width/2, height/2 - 60);
+          textSize(38);
+          text("Level: " + level, width/2, height/2 + 10);
+          textSize(32);
+          text("Punkte: " + score, width/2, height/2 + 60);
+          text("Drücke R zum Neustarten", width/2, height/2 + 110);
+          strokeWeight(1);
+        }
+        
+        // Mini Gojo zeichnen
+        drawMiniGojo();
+      }
+      
+      // Mini Gojo zeichnen
+      function drawMiniGojo() {
+        gojoWaveOffset += 0.05;
+        
+        let gojoX = width - 80;
+        let gojoY = height - 80;
+        let gojoSize = 60;
+        
+        push();
+        translate(gojoX, gojoY);
+        
+        // Körper (schwarze Uniform)
+        fill(20, 20, 40);
+        stroke(0);
+        strokeWeight(2);
+        ellipse(0, 10, gojoSize * 0.6, gojoSize * 0.8);
+        
+        // Kopf (hautfarben)
+        fill(255, 220, 177);
+        stroke(0);
+        strokeWeight(2);
+        ellipse(0, -10, gojoSize * 0.7, gojoSize * 0.7);
+        
+        // Haare (weiß/silber)
+        fill(240, 240, 255);
+        noStroke();
+        // Linke Haarsträhne
+        triangle(-gojoSize * 0.35, -25, -gojoSize * 0.25, -35, -gojoSize * 0.15, -25);
+        // Mittlere Haarsträhne  
+        triangle(-gojoSize * 0.1, -30, 0, -40, gojoSize * 0.1, -30);
+        // Rechte Haarsträhne
+        triangle(gojoSize * 0.15, -25, gojoSize * 0.25, -35, gojoSize * 0.35, -25);
+        // Haaransatz
+        ellipse(0, -20, gojoSize * 0.7, gojoSize * 0.4);
+        
+        // Augenbinde (blau/schwarz)
+        fill(10, 30, 60);
+        stroke(0);
+        strokeWeight(2);
+        rect(-gojoSize * 0.4, -15, gojoSize * 0.8, 8, 2);
+        
+        // Blaues Leuchten hinter Augenbinde
+        noStroke();
+        fill(0, 150, 255, 150);
+        ellipse(-8, -11, 6, 6);
+        ellipse(8, -11, 6, 6);
+        
+        // Mund (leichtes Lächeln)
+        noFill();
+        stroke(0);
+        strokeWeight(1.5);
+        arc(0, 0, 15, 10, 0, PI);
+        
+        // Arm/Hand winkt
+        let waveY = sin(gojoWaveOffset) * 5;
+        stroke(255, 220, 177);
+        strokeWeight(4);
+        line(gojoSize * 0.3, 5, gojoSize * 0.5, -5 + waveY);
+        
+        // Hand
+        fill(255, 220, 177);
+        stroke(0);
+        strokeWeight(1);
+        ellipse(gojoSize * 0.5, -5 + waveY, 8, 8);
+        
+        // Kragen
+        fill(20, 20, 40);
+        stroke(0);
+        strokeWeight(1);
+        triangle(-10, 15, 0, 20, 10, 15);
+        
+        pop();
+      }
+      
+      // Duolingo-Eule zeichnen
+      function drawBird() {
+        push();
+        
+        // Körper der Eule (grün)
+        fill(88, 204, 2); // Duolingo Grün
+        stroke(60, 140, 0);
+        strokeWeight(2);
+        ellipse(bird.x, bird.y, bird.radius * 2.2, bird.radius * 2.4);
+        
+        // Bauch (helleres Grün)
+        fill(120, 220, 50);
+        noStroke();
+        ellipse(bird.x, bird.y + bird.radius * 0.3, bird.radius * 1.3, bird.radius * 1.5);
+        
+        // Flügel (links)
+        fill(88, 204, 2);
+        stroke(60, 140, 0);
+        strokeWeight(1.5);
+        ellipse(bird.x - bird.radius * 0.8, bird.y + bird.radius * 0.2, bird.radius * 0.9, bird.radius * 1.3);
+        
+        // Flügel (rechts)
+        ellipse(bird.x + bird.radius * 0.8, bird.y + bird.radius * 0.2, bird.radius * 0.9, bird.radius * 1.3);
+        
+        // Ohr-Federn (links)
+        fill(88, 204, 2);
+        triangle(
+          bird.x - bird.radius * 0.6, bird.y - bird.radius,
+          bird.x - bird.radius * 0.3, bird.y - bird.radius * 1.5,
+          bird.x - bird.radius * 0.1, bird.y - bird.radius
+        );
+        
+        // Ohr-Federn (rechts)
+        triangle(
+          bird.x + bird.radius * 0.1, bird.y - bird.radius,
+          bird.x + bird.radius * 0.3, bird.y - bird.radius * 1.5,
+          bird.x + bird.radius * 0.6, bird.y - bird.radius
+        );
+        
+        // Große Augen (weiß)
+        fill(255);
+        stroke(0);
+        strokeWeight(2);
+        ellipse(bird.x - bird.radius * 0.35, bird.y - bird.radius * 0.2, bird.radius * 1.1, bird.radius * 1.2);
+        ellipse(bird.x + bird.radius * 0.35, bird.y - bird.radius * 0.2, bird.radius * 1.1, bird.radius * 1.2);
+        
+        // Pupillen (schwarz, schauen nach rechts/vorne)
+        fill(0);
+        noStroke();
+        ellipse(bird.x - bird.radius * 0.25, bird.y - bird.radius * 0.15, bird.radius * 0.5, bird.radius * 0.6);
+        ellipse(bird.x + bird.radius * 0.45, bird.y - bird.radius * 0.15, bird.radius * 0.5, bird.radius * 0.6);
+        
+        // Lichtreflexe in den Augen
+        fill(255);
+        ellipse(bird.x - bird.radius * 0.2, bird.y - bird.radius * 0.3, bird.radius * 0.2, bird.radius * 0.25);
+        ellipse(bird.x + bird.radius * 0.5, bird.y - bird.radius * 0.3, bird.radius * 0.2, bird.radius * 0.25);
+        
+        // Schnabel (orange/gelb)
+        fill(255, 150, 0);
+        stroke(200, 120, 0);
+        strokeWeight(1.5);
+        triangle(
+          bird.x, bird.y + bird.radius * 0.2,
+          bird.x - bird.radius * 0.3, bird.y + bird.radius * 0.6,
+          bird.x + bird.radius * 0.3, bird.y + bird.radius * 0.6
+        );
+        
+        // Füße (orange)
+        stroke(255, 150, 0);
+        strokeWeight(2);
+        line(bird.x - bird.radius * 0.3, bird.y + bird.radius * 1.1, bird.x - bird.radius * 0.3, bird.y + bird.radius * 1.4);
+        line(bird.x + bird.radius * 0.3, bird.y + bird.radius * 1.1, bird.x + bird.radius * 0.3, bird.y + bird.radius * 1.4);
+        
+        // Zehen
+        strokeWeight(1);
+        line(bird.x - bird.radius * 0.3, bird.y + bird.radius * 1.4, bird.x - bird.radius * 0.5, bird.y + bird.radius * 1.4);
+        line(bird.x - bird.radius * 0.3, bird.y + bird.radius * 1.4, bird.x - bird.radius * 0.1, bird.y + bird.radius * 1.4);
+        line(bird.x + bird.radius * 0.3, bird.y + bird.radius * 1.4, bird.x + bird.radius * 0.1, bird.y + bird.radius * 1.4);
+        line(bird.x + bird.radius * 0.3, bird.y + bird.radius * 1.4, bird.x + bird.radius * 0.5, bird.y + bird.radius * 1.4);
+        
+        pop();
+      }
+      
+      // Sonne zeichnen
+      function drawSun() {
+        // Sonnenstrahlen
+        stroke(255, 220, 0, 150);
+        strokeWeight(4);
+        for (let i = 0; i < 12; i++) {
+          let angle = (i / 12) * TWO_PI;
+          let x1 = 750 + cos(angle) * 50;
+          let y1 = 100 + sin(angle) * 50;
+          let x2 = 750 + cos(angle) * 70;
+          let y2 = 100 + sin(angle) * 70;
+          line(x1, y1, x2, y2);
+        }
+        
+        // Sonne
+        noStroke();
+        fill(255, 220, 0); // Gelb
+        circle(750, 100, 85);
+        
+        // Innerer Glanz
+        fill(255, 255, 150, 100);
+        circle(750, 100, 60);
+      }
+      
+      // Wolke zeichnen
+      function drawCloud(cloud) {
+        noStroke();
+        fill(255, 255, 255, 200); // Weiß mit etwas Transparenz
+        
+        // Wolke besteht aus mehreren Kreisen
+        let size = cloud.size;
+        circle(cloud.x, cloud.y, size);
+        circle(cloud.x + size * 0.5, cloud.y, size * 0.8);
+        circle(cloud.x + size * 0.9, cloud.y, size * 0.7);
+        circle(cloud.x + size * 0.25, cloud.y - size * 0.3, size * 0.6);
+        circle(cloud.x + size * 0.65, cloud.y - size * 0.25, size * 0.65);
+      }
+      
+      // Münze zeichnen
+      function drawCoin(coin) {
+        push(); // Speichere aktuellen Zeichenstatus
+        translate(coin.x, coin.y);
+        rotate(coinRotation);
+        
+        // Äußerer Ring (dunkler)
+        fill(218, 165, 32); // Goldgelb
+        stroke(184, 134, 11); // Dunkleres Gold
+        strokeWeight(2);
+        circle(0, 0, coin.radius * 2);
+        
+        // Innerer Ring (heller)
+        fill(255, 215, 0); // Helleres Gold
+        noStroke();
+        circle(0, 0, coin.radius * 1.4);
+        
+        // Zentraler Punkt/Symbol
+        fill(218, 165, 32);
+        textAlign(CENTER, CENTER);
+        textSize(coin.radius * 1.2);
+        textStyle(BOLD);
+        text("$", 0, 0);
+        
+        // Glanz-Effekt
+        fill(255, 255, 255, 150);
+        circle(-coin.radius * 0.3, -coin.radius * 0.3, coin.radius * 0.5);
+        
+        pop(); // Stelle Zeichenstatus wieder her
+      }
+      
+      // Röhre erstellen
+      function createPipe() {
+        let minHeight = 80;
+        let maxHeight = height - pipeGap - 80;
+        let topHeight = random(minHeight, maxHeight);
+        
+        pipes.push({
+          x: width,
+          topHeight: topHeight,
+          bottomY: topHeight + pipeGap,
+          passed: false
+        });
+        
+        // Mit 60% Wahrscheinlichkeit eine Münze in der Mitte der Lücke platzieren
+        if (random() < 0.6) {
+          let coinY = topHeight + pipeGap / 2; // Mitte der Lücke
+          let coinX = width + pipeWidth / 2; // Mitte der Röhre
+          
+          coins.push({
+            x: coinX,
+            y: coinY,
+            radius: 16
+          });
+        }
+      }
+      
+      // Röhre zeichnen
+      function drawPipe(pipe) {
+        fill(34, 139, 34); // Grün
+        stroke(0);
+        strokeWeight(3);
+        
+        // Obere Röhre
+        rect(pipe.x, 0, pipeWidth, pipe.topHeight);
+        // Oberer Rand
+        rect(pipe.x - 7, pipe.topHeight - 28, pipeWidth + 14, 28);
+        
+        // Untere Röhre
+        rect(pipe.x, pipe.bottomY, pipeWidth, height - pipe.bottomY);
+        // Unterer Rand
+        rect(pipe.x - 7, pipe.bottomY, pipeWidth + 14, 28);
+        
+        strokeWeight(1);
+      }
+      
+      // Kollisionsprüfung
+      function checkCollision(pipe) {
+        // Prüfe, ob Vogel horizontal mit der Röhre überlappt
+        if (bird.x + bird.radius > pipe.x && bird.x - bird.radius < pipe.x + pipeWidth) {
+          // Prüfe, ob Vogel die obere oder untere Röhre berührt
+          if (bird.y - bird.radius < pipe.topHeight || bird.y + bird.radius > pipe.bottomY) {
+            return true;
+          }
+        }
+        return false;
+      }
+      
+      // Level-Up Funktion
+      function levelUp() {
+        level++;
+        pointsToNextLevel += 20; // Nächstes Level braucht weitere 20 Punkte
+        levelUpMessage = true;
+        levelUpTimer = 0;
+        
+        // Schwierigkeit erhöhen
+        pipeSpeed = basePipeSpeed + (level - 1) * 0.5; // Schnellere Röhren
+        pipeGap = max(140, basePipeGap - (level - 1) * 5); // Kleinere Lücke (mindestens 140)
+        pipeInterval = max(60, 90 - (level - 1) * 3); // Häufigere Röhren (mindestens alle 60 Frames)
+        
+        // Level-Up Sound
+        playLevelUpSound();
+      }
+      
+      // Sound-Funktionen
+      function playFlapSound() {
+        if (!audioContext) return;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+      }
+      
+      function playScoreSound() {
+        if (!audioContext) return;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(1200, audioContext.currentTime + 0.05);
+        
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.15);
+      }
+      
+      function playCoinSound() {
+        if (!audioContext) return;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(1500, audioContext.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.15);
+      }
+      
+      function playHitSound() {
+        if (!audioContext) return;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+      }
+      
+      function playLevelUpSound() {
+        if (!audioContext) return;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Aufsteigende Melodie
+        oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(500, audioContext.currentTime + 0.1);
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.2);
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.3);
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime + 0.3);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+      }
+      
+      // Tasteneingabe
+      function keyPressed() {
+        if (!gameStarted && keyCode === 32) {
+          // Spiel starten
+          gameStarted = true;
+          bird.vy = jumpStrength;
+          playFlapSound();
+          return;
+        }
+        
+        if (gameStarted && !gameOver && keyCode === 32) {
+          // Vogel springen lassen
+          bird.vy = jumpStrength;
+          playFlapSound();
+        }
+        
+        if (gameOver && (key === 'r' || key === 'R')) {
+          // Spiel neustarten
+          resetGame();
+        }
+      }
+      
+      // Mausklick für Sprung
+      function mousePressed() {
+        if (!gameStarted) {
+          gameStarted = true;
+          bird.vy = jumpStrength;
+          playFlapSound();
+        } else if (!gameOver) {
+          bird.vy = jumpStrength;
+          playFlapSound();
+        }
+      }
+      
+      // Spiel zurücksetzen
+      function resetGame() {
+        bird.y = 300;
+        bird.vy = 0;
+        pipes = [];
+        coins = [];
+        score = 0;
+        gameOver = false;
+        frameCounter = 0;
+        
+        // Level zurücksetzen
+        level = 1;
+        pointsToNextLevel = 20;
+        levelUpMessage = false;
+        levelUpTimer = 0;
+        pipeSpeed = basePipeSpeed;
+        pipeGap = basePipeGap;
+        pipeInterval = 90;
+      }
+    </script>
+  </body>
+</html>
+

@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Block Tower Defense</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+        
+        #gameContainer {
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+        }
+        
+        canvas {
+            border: 3px solid #fff;
+            background: #87CEEB;
+            cursor: crosshair;
+            display: block;
+            margin: 0 auto 20px;
+        }
+        
+        #ui {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .panel {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            flex: 1;
+        }
+        
+        .inventory-item {
+            margin: 5px 0;
+            font-size: 16px;
+        }
+        
+        .shop-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .shop-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+        
+        .weapon-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .weapon-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .weapon-btn.active {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 0 20px rgba(245, 87, 108, 0.6);
+        }
+        
+        h1 {
+            margin: 0 0 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        h3 {
+            margin: 0 0 10px;
+            color: #ffd700;
+        }
+        
+        #waveInfo {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ff6b6b;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .controls {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <h1>🏰 Block Tower Defense 🏰</h1>
+        <div id="waveInfo">Welle: 1 | Gegner: 0</div>
+        
+        <div id="ui">
+            <div class="panel">
+                <h3>💰 Geld & Inventar</h3>
+                <div class="inventory-item">💵 Geld: <span id="money">100</span>€</div>
+                <div class="inventory-item">⬛ Obsidian: <span id="obsidianCount">64</span></div>
+                <div class="inventory-item">🟫 Erde: <span id="dirtCount">600</span></div>
+                <div class="inventory-item">🧱 Blöcke: <span id="blockCount">300</span></div>
+                <div class="inventory-item">❤️ Basis-HP: <span id="baseHealth">100</span></div>
+            </div>
+            
+            <div class="panel">
+                <h3>🛒 Shop</h3>
+                <div class="shop-item" onclick="buyBlock('obsidian')">⬛ Obsidian (20€)</div>
+                <div class="shop-item" onclick="buyBlock('dirt')">🟫 Erde (5€)</div>
+                <div class="shop-item" onclick="buyBlock('block')">🧱 Block (10€)</div>
+            </div>
+            
+            <div class="panel">
+                <h3>🔫 Waffen</h3>
+                <button class="weapon-btn active" id="pistolBtn" onclick="selectWeapon('pistol')">🔫 Pistole</button>
+                <button class="weapon-btn" id="machinegunBtn" onclick="selectWeapon('machinegun')">🔥 MG</button>
+                <div style="margin-top: 10px; font-size: 14px;">
+                    <div>Getötet: <span id="killCount">0</span></div>
+                </div>
+            </div>
+        </div>
+        
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div class="controls">
+            <strong>Steuerung:</strong> 
+            Linksklick = Schießen | 
+            Rechtsklick = Block platzieren | 
+            1-3 = Block auswählen (1=Obsidian, 2=Erde, 3=Block)
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Audio Context für Sounds
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Sound Funktionen
+        function playSound(type) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            if (type === 'shoot') {
+                oscillator.frequency.value = 600;
+                oscillator.type = 'square';
+                gainNode.gain.value = 0.08;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.06);
+            } else if (type === 'machinegun') {
+                oscillator.frequency.value = 400;
+                oscillator.type = 'square';
+                gainNode.gain.value = 0.05;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.04);
+            } else if (type === 'enemyKilled') {
+                oscillator.frequency.value = 250;
+                oscillator.type = 'sawtooth';
+                gainNode.gain.value = 0.12;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.15);
+            } else if (type === 'blockDestroyed') {
+                oscillator.frequency.value = 180;
+                oscillator.type = 'triangle';
+                gainNode.gain.value = 0.1;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.12);
+            } else if (type === 'build') {
+                oscillator.frequency.value = 500;
+                gainNode.gain.value = 0.08;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.08);
+            } else if (type === 'waveComplete') {
+                oscillator.frequency.value = 600;
+                gainNode.gain.value = 0.15;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.1);
+                setTimeout(() => {
+                    const osc2 = audioContext.createOscillator();
+                    const gain2 = audioContext.createGain();
+                    osc2.connect(gain2);
+                    gain2.connect(audioContext.destination);
+                    osc2.frequency.value = 800;
+                    gain2.gain.value = 0.15;
+                    osc2.start();
+                    osc2.stop(audioContext.currentTime + 0.12);
+                }, 80);
+            }
+        }
+        
+        // Spielzustand
+        const game = {
+            money: 100,
+            baseHealth: 100,
+            wave: 1,
+            kills: 0,
+            selectedBlock: 'obsidian',
+            selectedWeapon: 'pistol',
+            isRunning: true,
+            lastShot: 0,
+            waveSpawning: false
+        };
+        
+        // Inventar
+        const inventory = {
+            obsidian: 64,
+            dirt: 600,
+            block: 300
+        };
+        
+        // Basis-Position (unten in der Mitte)
+        const base = {
+            x: 350,
+            y: 550,
+            width: 100,
+            height: 50
+        };
+        
+        // Arrays für Spielobjekte
+        const blocks = [];
+        const enemies = [];
+        const bullets = [];
+        const particles = [];
+        
+        // Block-Größe
+        const BLOCK_SIZE = 40;
+        const GRID_COLS = Math.floor(canvas.width / BLOCK_SIZE);
+        const GRID_ROWS = Math.floor(canvas.height / BLOCK_SIZE);
+        
+        // Block-Eigenschaften
+        const blockTypes = {
+            obsidian: { color: '#1a1a1a', hp: 500, emoji: '⬛' },
+            dirt: { color: '#8B4513', hp: 100, emoji: '🟫' },
+            block: { color: '#808080', hp: 200, emoji: '🧱' }
+        };
+        
+        // Waffen-Eigenschaften
+        const weapons = {
+            pistol: { 
+                damage: 50, 
+                fireRate: 500, // ms zwischen Schüssen
+                bulletSpeed: 15,
+                color: '#ffff00'
+            },
+            machinegun: { 
+                damage: 25, 
+                fireRate: 100,
+                bulletSpeed: 20,
+                color: '#ff6600'
+            }
+        };
+        
+        // Block-Klasse
+        class Block {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.maxHp = blockTypes[type].hp;
+                this.hp = this.maxHp;
+            }
+            
+            draw() {
+                const props = blockTypes[this.type];
+                ctx.fillStyle = props.color;
+                ctx.fillRect(this.x, this.y, BLOCK_SIZE, BLOCK_SIZE);
+                
+                // Umrandung
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x, this.y, BLOCK_SIZE, BLOCK_SIZE);
+                
+                // HP-Balken wenn beschädigt
+                if (this.hp < this.maxHp) {
+                    const hpPercent = this.hp / this.maxHp;
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(this.x, this.y - 5, BLOCK_SIZE, 3);
+                    ctx.fillStyle = '#00ff00';
+                    ctx.fillRect(this.x, this.y - 5, BLOCK_SIZE * hpPercent, 3);
+                }
+            }
+            
+            takeDamage(damage) {
+                this.hp -= damage;
+                if (this.hp <= 0) {
+                    playSound('blockDestroyed');
+                }
+                return this.hp <= 0;
+            }
+        }
+        
+        // Gegner-Klasse
+        class Enemy {
+            constructor(wave) {
+                this.x = Math.random() < 0.5 ? 0 : canvas.width;
+                this.y = Math.random() * (canvas.height - 100);
+                this.width = 30;
+                this.height = 30;
+                this.speed = 1 + wave * 0.1;
+                this.hp = 50 + wave * 10;
+                this.maxHp = this.hp;
+                this.damage = 3; // Fester Schaden: 3 pro Angriff
+                this.attackCooldown = 0;
+                this.blocked = false;
+            }
+            
+            update() {
+                this.attackCooldown--;
+                
+                // Prüfe auf Block-Kollision
+                this.blocked = false;
+                for (const block of blocks) {
+                    if (this.checkCollision(block)) {
+                        this.blocked = true;
+                        if (this.attackCooldown <= 0) {
+                            if (block.takeDamage(this.damage)) {
+                                blocks.splice(blocks.indexOf(block), 1);
+                            }
+                            this.attackCooldown = 30;
+                        }
+                        break;
+                    }
+                }
+                
+                // Bewege zum Ziel wenn nicht blockiert
+                if (!this.blocked) {
+                    // Bewege zur Basis
+                    const dx = (base.x + base.width/2) - (this.x + this.width/2);
+                    const dy = (base.y + base.height/2) - (this.y + this.height/2);
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    
+                    if (dist > 5) {
+                        this.x += (dx / dist) * this.speed;
+                        this.y += (dy / dist) * this.speed;
+                    } else {
+                        // Greife Basis an
+                        if (this.attackCooldown <= 0) {
+                            game.baseHealth -= this.damage;
+                            this.attackCooldown = 30;
+                            updateUI();
+                            
+                            if (game.baseHealth <= 0) {
+                                gameOver();
+                            }
+                        }
+                    }
+                }
+            }
+            
+            checkCollision(block) {
+                return this.x < block.x + BLOCK_SIZE &&
+                       this.x + this.width > block.x &&
+                       this.y < block.y + BLOCK_SIZE &&
+                       this.y + this.height > block.y;
+            }
+            
+            draw() {
+                // Gegner-Körper
+                ctx.fillStyle = this.blocked ? '#ff6600' : '#ff0000';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // Augen
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(this.x + 5, this.y + 8, 8, 8);
+                ctx.fillRect(this.x + 17, this.y + 8, 8, 8);
+                ctx.fillStyle = '#000';
+                ctx.fillRect(this.x + 8, this.y + 11, 3, 3);
+                ctx.fillRect(this.x + 20, this.y + 11, 3, 3);
+                
+                // HP-Balken
+                const hpPercent = this.hp / this.maxHp;
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(this.x, this.y - 8, this.width, 4);
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(this.x, this.y - 8, this.width * hpPercent, 4);
+            }
+            
+            takeDamage(damage) {
+                this.hp -= damage;
+                if (this.hp <= 0) {
+                    game.money += 10;
+                    game.kills++;
+                    createParticles(this.x + this.width/2, this.y + this.height/2);
+                    playSound('enemyKilled');
+                    return true;
+                }
+                return false;
+            }
+        }
+        
+        // Kugel-Klasse
+        class Bullet {
+            constructor(x, y, targetX, targetY, weapon) {
+                this.x = x;
+                this.y = y;
+                const dx = targetX - x;
+                const dy = targetY - y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                this.vx = (dx / dist) * weapons[weapon].bulletSpeed;
+                this.vy = (dy / dist) * weapons[weapon].bulletSpeed;
+                this.damage = weapons[weapon].damage;
+                this.color = weapons[weapon].color;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // Prüfe Kollision mit Gegnern
+                for (const enemy of enemies) {
+                    if (this.x > enemy.x && this.x < enemy.x + enemy.width &&
+                        this.y > enemy.y && this.y < enemy.y + enemy.height) {
+                        if (enemy.takeDamage(this.damage)) {
+                            enemies.splice(enemies.indexOf(enemy), 1);
+                        }
+                        return true; // Kugel entfernen
+                    }
+                }
+                
+                // Entferne wenn außerhalb
+                return this.x < 0 || this.x > canvas.width || 
+                       this.y < 0 || this.y > canvas.height;
+            }
+            
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Leuchten
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+        
+        // Partikel für Explosionen
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 5;
+                this.vy = (Math.random() - 0.5) * 5;
+                this.life = 30;
+                this.maxLife = 30;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life--;
+                return this.life <= 0;
+            }
+            
+            draw() {
+                const alpha = this.life / this.maxLife;
+                ctx.fillStyle = `rgba(255, 100, 0, ${alpha})`;
+                ctx.fillRect(this.x, this.y, 4, 4);
+            }
+        }
+        
+        function createParticles(x, y) {
+            for (let i = 0; i < 10; i++) {
+                particles.push(new Particle(x, y));
+            }
+        }
+        
+        // Wellen-System
+        function spawnWave() {
+            game.waveSpawning = true;
+            const enemyCount = 30; // Feste Anzahl: 30 Gegner pro Welle
+            for (let i = 0; i < enemyCount; i++) {
+                setTimeout(() => {
+                    if (game.isRunning) {
+                        enemies.push(new Enemy(game.wave));
+                    }
+                    // Nach dem letzten Gegner: spawning beendet
+                    if (i === enemyCount - 1) {
+                        setTimeout(() => {
+                            game.waveSpawning = false;
+                        }, 1000);
+                    }
+                }, i * 1000);
+            }
+        }
+        
+        // Waffen-Auswahl
+        function selectWeapon(weapon) {
+            game.selectedWeapon = weapon;
+            document.getElementById('pistolBtn').classList.toggle('active', weapon === 'pistol');
+            document.getElementById('machinegunBtn').classList.toggle('active', weapon === 'machinegun');
+        }
+        
+        // Shop-Funktionen
+        function buyBlock(type) {
+            const prices = { obsidian: 20, dirt: 5, block: 10 };
+            if (game.money >= prices[type]) {
+                game.money -= prices[type];
+                inventory[type]++;
+                updateUI();
+            }
+        }
+        
+        // UI aktualisieren
+        function updateUI() {
+            document.getElementById('money').textContent = game.money;
+            document.getElementById('obsidianCount').textContent = inventory.obsidian;
+            document.getElementById('dirtCount').textContent = inventory.dirt;
+            document.getElementById('blockCount').textContent = inventory.block;
+            document.getElementById('baseHealth').textContent = Math.max(0, Math.floor(game.baseHealth));
+            document.getElementById('killCount').textContent = game.kills;
+            document.getElementById('waveInfo').textContent = `Welle: ${game.wave} | Gegner: ${enemies.length}`;
+        }
+        
+        // Maus-Events
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Schießen
+            const now = Date.now();
+            if (now - game.lastShot > weapons[game.selectedWeapon].fireRate) {
+                bullets.push(new Bullet(canvas.width/2, canvas.height - 50, x, y, game.selectedWeapon));
+                game.lastShot = now;
+                playSound(game.selectedWeapon === 'machinegun' ? 'machinegun' : 'shoot');
+            }
+        });
+        
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Block platzieren
+            const gridX = Math.floor(x / BLOCK_SIZE) * BLOCK_SIZE;
+            const gridY = Math.floor(y / BLOCK_SIZE) * BLOCK_SIZE;
+            
+            if (inventory[game.selectedBlock] > 0) {
+                // Prüfe ob bereits Block vorhanden
+                const exists = blocks.some(b => b.x === gridX && b.y === gridY);
+                if (!exists) {
+                    blocks.push(new Block(gridX, gridY, game.selectedBlock));
+                    inventory[game.selectedBlock]--;
+                    updateUI();
+                    playSound('build');
+                }
+            }
+        });
+        
+        // Tastatur für Block-Auswahl
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '1') game.selectedBlock = 'obsidian';
+            if (e.key === '2') game.selectedBlock = 'dirt';
+            if (e.key === '3') game.selectedBlock = 'block';
+        });
+        
+        // Spiel-Loop
+        function gameLoop() {
+            if (!game.isRunning) return;
+            
+            // Hintergrund
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Boden
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+            
+            // Basis zeichnen
+            ctx.fillStyle = '#4169E1';
+            ctx.fillRect(base.x, base.y, base.width, base.height);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(base.x, base.y, base.width, base.height);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('BASIS', base.x + base.width/2, base.y + 30);
+            
+            // Blöcke zeichnen
+            blocks.forEach(block => block.draw());
+            
+            // Gegner aktualisieren und zeichnen
+            enemies.forEach(enemy => {
+                enemy.update();
+                enemy.draw();
+            });
+            
+            // Kugeln aktualisieren und zeichnen
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                if (bullets[i].update()) {
+                    bullets.splice(i, 1);
+                } else {
+                    bullets[i].draw();
+                }
+            }
+            
+            // Partikel
+            for (let i = particles.length - 1; i >= 0; i--) {
+                if (particles[i].update()) {
+                    particles.splice(i, 1);
+                } else {
+                    particles[i].draw();
+                }
+            }
+            
+            // Nächste Welle wenn alle Gegner besiegt
+            if (enemies.length === 0 && game.isRunning && !game.waveSpawning) {
+                game.waveSpawning = true;
+                game.wave++;
+                updateUI();
+                playSound('waveComplete');
+                setTimeout(() => {
+                    if (game.isRunning) spawnWave();
+                }, 3000);
+            }
+            
+            updateUI();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function gameOver() {
+            game.isRunning = false;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2 - 40);
+            ctx.font = '24px Arial';
+            ctx.fillText(`Welle ${game.wave} erreicht!`, canvas.width/2, canvas.height/2 + 10);
+            ctx.fillText(`${game.kills} Gegner getötet!`, canvas.width/2, canvas.height/2 + 50);
+            ctx.fillText('Seite neu laden zum Neustarten', canvas.width/2, canvas.height/2 + 100);
+        }
+        
+        // Spiel starten
+        updateUI();
+        spawnWave();
+        gameLoop();
+    </script>
+</body>
+</html>
+

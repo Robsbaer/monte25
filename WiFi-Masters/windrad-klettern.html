@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windrad Klettern - Helikopter Rettungsmission</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        canvas {
+            display: block;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 50%, #90EE90 100%);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        #ui {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        #controls {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            color: white;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            z-index: 100;
+        }
+        
+        #gameOver h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        
+        #gameOver p {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="ui">
+            <div>Level: <span id="level">1</span></div>
+            <div>Höhe: <span id="height">0</span>m</div>
+            <div>Leben: <span id="lives">3</span></div>
+            <button class="btn" onclick="toggleSound()">🔊 Sound</button>
+        </div>
+        <div id="controls">
+            ← → Bewegen | ↓ Schneller klettern | Leertaste: Springen | Vermeide Hindernisse!
+        </div>
+    </div>
+    
+    <div id="gameOver">
+        <h2 id="gameOverTitle">Game Over</h2>
+        <p id="gameOverText"></p>
+        <button class="btn" onclick="restartGame()">Nochmal spielen</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Audio Context für Sounds
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let soundEnabled = true;
+        
+        // Sound-Funktionen
+        function playSound(frequency, duration, type = 'sine', volume = 0.3) {
+            if (!soundEnabled) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = type;
+            gainNode.gain.value = volume;
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+        
+        function playHelicopterSound() {
+            playSound(100, 0.1, 'sawtooth', 0.15);
+        }
+        
+        function playClimbSound() {
+            playSound(300, 0.05, 'sine', 0.1);
+        }
+        
+        function playJumpSound() {
+            playSound(400, 0.1, 'square', 0.2);
+        }
+        
+        function playHitSound() {
+            playSound(150, 0.2, 'sawtooth', 0.3);
+        }
+        
+        function playLevelCompleteSound() {
+            setTimeout(() => playSound(523, 0.15, 'sine', 0.3), 0);
+            setTimeout(() => playSound(659, 0.15, 'sine', 0.3), 150);
+            setTimeout(() => playSound(784, 0.3, 'sine', 0.3), 300);
+        }
+        
+        function playGameOverSound() {
+            setTimeout(() => playSound(400, 0.2, 'sawtooth', 0.3), 0);
+            setTimeout(() => playSound(300, 0.2, 'sawtooth', 0.3), 200);
+            setTimeout(() => playSound(200, 0.4, 'sawtooth', 0.3), 400);
+        }
+        
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.querySelector('.btn').textContent = soundEnabled ? '🔊 Sound' : '🔇 Sound';
+        }
+        
+        // Spiel-Variablen
+        let gameState = 'intro'; // intro, playing, paused, gameOver, levelComplete
+        let level = 1;
+        let lives = 3;
+        let height = 0;
+        let score = 0;
+        
+        // Helikopter
+        const helicopter = {
+            x: canvas.width - 150,
+            y: 50,
+            width: 80,
+            height: 40,
+            rotorAngle: 0,
+            isLeaving: false,
+            hasDroppedPlayer: false
+        };
+        
+        // Spieler
+        const player = {
+            x: canvas.width / 2,
+            y: 100,
+            width: 30,
+            height: 40,
+            velocityY: 0,
+            velocityX: 0,
+            onTower: false,
+            climbing: false,
+            jumping: false,
+            invincible: false,
+            invincibleTime: 0
+        };
+        
+        // Windrad/Turm
+        const tower = {
+            x: canvas.width / 2 - 40,
+            width: 80,
+            height: 5000, // Sehr hoch für mehrere Level
+            segments: [],
+            obstacles: []
+        };
+        
+        // Kamera
+        let cameraY = 0;
+        
+        // Steuerung
+        const keys = {};
+        
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (e.key === ' ') {
+                e.preventDefault();
+                if (gameState === 'playing' && player.onTower && !player.jumping) {
+                    player.jumping = true;
+                    player.velocityY = -8;
+                    player.onTower = false;
+                    playJumpSound();
+                }
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+        
+        // Level initialisieren
+        function initLevel() {
+            height = 0;
+            tower.obstacles = [];
+            tower.segments = [];
+            
+            // Erstelle Turmsegmente
+            for (let i = 0; i < 100; i++) {
+                tower.segments.push({
+                    y: i * 50,
+                    hasLadder: Math.random() > 0.3
+                });
+            }
+            
+            // Erstelle Hindernisse basierend auf Level
+            const obstacleCount = 15 + level * 5;
+            const obstacleTypes = ['bird', 'debris', 'wind', 'lightning'];
+            
+            for (let i = 0; i < obstacleCount; i++) {
+                const type = obstacleTypes[Math.floor(Math.random() * Math.min(level, obstacleTypes.length))];
+                const y = 200 + Math.random() * (tower.height - 400);
+                
+                let obstacle = {
+                    type: type,
+                    y: y,
+                    active: true
+                };
+                
+                switch(type) {
+                    case 'bird':
+                        obstacle.x = tower.x - 100;
+                        obstacle.width = 40;
+                        obstacle.height = 30;
+                        obstacle.direction = 1;
+                        obstacle.speed = 1 + level * 0.3;
+                        break;
+                    case 'debris':
+                        obstacle.x = tower.x + Math.random() * tower.width;
+                        obstacle.width = 25;
+                        obstacle.height = 25;
+                        obstacle.velocityY = 2 + level * 0.5;
+                        obstacle.rotation = 0;
+                        break;
+                    case 'wind':
+                        obstacle.x = tower.x + tower.width;
+                        obstacle.width = 80;
+                        obstacle.height = 60;
+                        obstacle.strength = 3 + level * 0.5;
+                        obstacle.phase = Math.random() * Math.PI * 2;
+                        break;
+                    case 'lightning':
+                        obstacle.x = tower.x;
+                        obstacle.width = tower.width;
+                        obstacle.height = 150;
+                        obstacle.timer = 0;
+                        obstacle.interval = 120;
+                        obstacle.warning = false;
+                        break;
+                }
+                
+                tower.obstacles.push(obstacle);
+            }
+        }
+        
+        // Zeichne Helikopter
+        function drawHelicopter() {
+            ctx.save();
+            ctx.translate(helicopter.x, helicopter.y);
+            
+            // Rotor
+            ctx.save();
+            ctx.translate(0, -5);
+            ctx.rotate(helicopter.rotorAngle);
+            ctx.fillStyle = '#555';
+            ctx.fillRect(-35, -2, 70, 4);
+            ctx.fillRect(-2, -35, 4, 70);
+            ctx.restore();
+            
+            // Körper
+            ctx.fillStyle = '#FF6B35';
+            ctx.fillRect(-40, 0, 80, 25);
+            ctx.beginPath();
+            ctx.ellipse(0, 12, 40, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Fenster
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(-25, 5, 20, 15);
+            
+            // Heckrotor
+            ctx.fillStyle = '#444';
+            ctx.fillRect(-40, 10, 15, 5);
+            ctx.fillRect(-45, 8, 5, 9);
+            
+            ctx.restore();
+            
+            helicopter.rotorAngle += 0.3;
+        }
+        
+        // Zeichne Turm/Windrad
+        function drawTower() {
+            // Turm-Basis am Boden
+            const groundY = canvas.height - cameraY;
+            if (groundY > 0 && groundY < canvas.height + 100) {
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(tower.x - 20, groundY - 100, tower.width + 40, 100);
+                
+                // Windrad-Flügel am Boden
+                ctx.save();
+                ctx.translate(tower.x + tower.width / 2, groundY - 100);
+                ctx.rotate(Date.now() * 0.001);
+                
+                for (let i = 0; i < 3; i++) {
+                    ctx.save();
+                    ctx.rotate((Math.PI * 2 / 3) * i);
+                    ctx.fillStyle = '#FFF';
+                    ctx.strokeStyle = '#333';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.ellipse(0, -60, 15, 60, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+                ctx.restore();
+            }
+            
+            // Zeichne Turm-Segmente
+            tower.segments.forEach(segment => {
+                const screenY = segment.y - cameraY;
+                if (screenY > -100 && screenY < canvas.height + 100) {
+                    // Turm
+                    ctx.fillStyle = '#A0522D';
+                    ctx.fillRect(tower.x, screenY, tower.width, 50);
+                    ctx.strokeStyle = '#654321';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(tower.x, screenY, tower.width, 50);
+                    
+                    // Leiter
+                    if (segment.hasLadder) {
+                        ctx.strokeStyle = '#444';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(tower.x + 20, screenY);
+                        ctx.lineTo(tower.x + 20, screenY + 50);
+                        ctx.moveTo(tower.x + 60, screenY);
+                        ctx.lineTo(tower.x + 60, screenY + 50);
+                        ctx.stroke();
+                        
+                        // Sprossen
+                        for (let i = 0; i < 3; i++) {
+                            const y = screenY + 10 + i * 15;
+                            ctx.beginPath();
+                            ctx.moveTo(tower.x + 20, y);
+                            ctx.lineTo(tower.x + 60, y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Zeichne Hindernisse
+        function drawObstacles() {
+            tower.obstacles.forEach(obstacle => {
+                if (!obstacle.active) return;
+                
+                const screenY = obstacle.y - cameraY;
+                if (screenY < -100 || screenY > canvas.height + 100) return;
+                
+                ctx.save();
+                
+                switch(obstacle.type) {
+                    case 'bird':
+                        ctx.fillStyle = '#333';
+                        ctx.beginPath();
+                        ctx.ellipse(obstacle.x, screenY, 20, 15, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Flügel
+                        const wingFlap = Math.sin(Date.now() * 0.01) * 10;
+                        ctx.fillStyle = '#555';
+                        ctx.beginPath();
+                        ctx.ellipse(obstacle.x - 15, screenY, 10, 5, -wingFlap * 0.1, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(obstacle.x + 15, screenY, 10, 5, wingFlap * 0.1, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'debris':
+                        ctx.translate(obstacle.x, screenY);
+                        ctx.rotate(obstacle.rotation);
+                        ctx.fillStyle = '#8B4513';
+                        ctx.fillRect(-12, -12, 25, 25);
+                        ctx.strokeStyle = '#654321';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(-12, -12, 25, 25);
+                        break;
+                        
+                    case 'wind':
+                        const windPhase = Math.sin(Date.now() * 0.005 + obstacle.phase);
+                        ctx.globalAlpha = 0.3 + windPhase * 0.2;
+                        ctx.fillStyle = '#B0C4DE';
+                        for (let i = 0; i < 5; i++) {
+                            ctx.beginPath();
+                            ctx.arc(obstacle.x + i * 15, screenY + Math.sin(Date.now() * 0.01 + i) * 10, 8, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        ctx.globalAlpha = 1;
+                        break;
+                        
+                    case 'lightning':
+                        if (obstacle.warning) {
+                            ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+                            ctx.fillRect(obstacle.x, screenY, obstacle.width, obstacle.height);
+                        }
+                        if (obstacle.timer > obstacle.interval - 10 && obstacle.timer < obstacle.interval) {
+                            ctx.strokeStyle = '#FFFF00';
+                            ctx.lineWidth = 5;
+                            ctx.beginPath();
+                            ctx.moveTo(obstacle.x + obstacle.width / 2, screenY);
+                            for (let i = 0; i < 5; i++) {
+                                const x = obstacle.x + obstacle.width / 2 + (Math.random() - 0.5) * 30;
+                                const y = screenY + (i + 1) * (obstacle.height / 5);
+                                ctx.lineTo(x, y);
+                            }
+                            ctx.stroke();
+                        }
+                        break;
+                }
+                
+                ctx.restore();
+            });
+        }
+        
+        // Zeichne Spieler
+        function drawPlayer() {
+            const screenY = player.y - cameraY;
+            
+            if (player.invincible && Math.floor(Date.now() / 100) % 2 === 0) {
+                ctx.globalAlpha = 0.5;
+            }
+            
+            ctx.fillStyle = '#FF4444';
+            ctx.fillRect(player.x, screenY, player.width, player.height);
+            
+            // Kopf
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(player.x + player.width / 2, screenY + 10, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Arme
+            ctx.strokeStyle = '#FF4444';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(player.x + 5, screenY + 20);
+            ctx.lineTo(player.x - 5, screenY + 25);
+            ctx.moveTo(player.x + player.width - 5, screenY + 20);
+            ctx.lineTo(player.x + player.width + 5, screenY + 25);
+            ctx.stroke();
+            
+            ctx.globalAlpha = 1;
+        }
+        
+        // Update Spiellogik
+        function update() {
+            if (gameState === 'intro') {
+                // Helikopter fliegt ein und setzt Spieler ab
+                if (helicopter.x > tower.x + tower.width / 2) {
+                    helicopter.x -= 2;
+                    playHelicopterSound();
+                } else if (!helicopter.hasDroppedPlayer) {
+                    player.x = helicopter.x - 15;
+                    player.y = helicopter.y + 40;
+                    helicopter.hasDroppedPlayer = true;
+                } else if (player.y < 150) {
+                    player.y += 3;
+                } else {
+                    player.onTower = true;
+                    helicopter.isLeaving = true;
+                    gameState = 'playing';
+                }
+                
+                if (helicopter.isLeaving) {
+                    helicopter.x += 2;
+                    helicopter.y -= 1;
+                }
+                return;
+            }
+            
+            if (gameState !== 'playing') return;
+            
+            // Spieler-Bewegung
+            if (keys['ArrowLeft'] && player.x > tower.x) {
+                player.velocityX = -3;
+            } else if (keys['ArrowRight'] && player.x < tower.x + tower.width - player.width) {
+                player.velocityX = 3;
+            } else {
+                player.velocityX *= 0.8;
+            }
+            
+            player.x += player.velocityX;
+            
+            // Klettern
+            if (player.onTower) {
+                if (keys['ArrowDown']) {
+                    player.y += 4;
+                    height += 0.1;
+                    if (Math.random() > 0.8) playClimbSound();
+                } else {
+                    player.y += 1;
+                    height += 0.025;
+                }
+                player.velocityY = 0;
+            } else {
+                // Schwerkraft
+                player.velocityY += 0.5;
+                player.y += player.velocityY;
+                
+                // Kollision mit Turm
+                if (player.y >= tower.segments[0].y && 
+                    player.x >= tower.x && 
+                    player.x <= tower.x + tower.width - player.width) {
+                    player.onTower = true;
+                    player.jumping = false;
+                    player.velocityY = 0;
+                }
+            }
+            
+            // Kamera folgt Spieler
+            cameraY = player.y - canvas.height / 3;
+            
+            // Update Hindernisse
+            tower.obstacles.forEach(obstacle => {
+                if (!obstacle.active) return;
+                
+                switch(obstacle.type) {
+                    case 'bird':
+                        obstacle.x += obstacle.speed * obstacle.direction;
+                        if (obstacle.x < tower.x - 200 || obstacle.x > canvas.width + 100) {
+                            obstacle.direction *= -1;
+                        }
+                        break;
+                        
+                    case 'debris':
+                        obstacle.y += obstacle.velocityY;
+                        obstacle.rotation += 0.1;
+                        if (obstacle.y > tower.height + 100) {
+                            obstacle.active = false;
+                        }
+                        break;
+                        
+                    case 'lightning':
+                        obstacle.timer++;
+                        obstacle.warning = obstacle.timer > obstacle.interval - 60;
+                        if (obstacle.timer >= obstacle.interval) {
+                            obstacle.timer = 0;
+                        }
+                        break;
+                }
+                
+                // Kollision mit Spieler
+                if (!player.invincible && checkCollision(player, obstacle)) {
+                    hitPlayer();
+                }
+            });
+            
+            // Invincibility Timer
+            if (player.invincible) {
+                player.invincibleTime--;
+                if (player.invincibleTime <= 0) {
+                    player.invincible = false;
+                }
+            }
+            
+            // Level abgeschlossen
+            if (height >= 100 + level * 50) {
+                completeLevel();
+            }
+            
+            // UI Update
+            document.getElementById('level').textContent = level;
+            document.getElementById('height').textContent = Math.floor(height);
+            document.getElementById('lives').textContent = lives;
+        }
+        
+        // Kollisionserkennung
+        function checkCollision(player, obstacle) {
+            const screenY = obstacle.y;
+            
+            switch(obstacle.type) {
+                case 'bird':
+                case 'debris':
+                    return player.x < obstacle.x + obstacle.width &&
+                           player.x + player.width > obstacle.x &&
+                           player.y < screenY + obstacle.height &&
+                           player.y + player.height > screenY;
+                           
+                case 'wind':
+                    const inRange = player.x < obstacle.x + obstacle.width &&
+                                  player.x + player.width > obstacle.x &&
+                                  player.y < screenY + obstacle.height &&
+                                  player.y + player.height > screenY;
+                    if (inRange && !player.onTower) {
+                        player.velocityX += obstacle.strength * 0.1;
+                    }
+                    return false;
+                    
+                case 'lightning':
+                    return obstacle.timer >= obstacle.interval - 10 &&
+                           obstacle.timer < obstacle.interval &&
+                           player.x < obstacle.x + obstacle.width &&
+                           player.x + player.width > obstacle.x &&
+                           player.y < screenY + obstacle.height &&
+                           player.y + player.height > screenY;
+            }
+            return false;
+        }
+        
+        // Spieler getroffen
+        function hitPlayer() {
+            lives--;
+            player.invincible = true;
+            player.invincibleTime = 120;
+            playHitSound();
+            
+            if (lives <= 0) {
+                gameOver();
+            }
+        }
+        
+        // Level abgeschlossen
+        function completeLevel() {
+            gameState = 'levelComplete';
+            playLevelCompleteSound();
+            
+            setTimeout(() => {
+                level++;
+                lives = Math.min(lives + 1, 5);
+                gameState = 'intro';
+                helicopter.x = canvas.width + 100;
+                helicopter.y = 50;
+                helicopter.isLeaving = false;
+                helicopter.hasDroppedPlayer = false;
+                player.y = 100;
+                player.velocityY = 0;
+                player.onTower = false;
+                cameraY = 0;
+                initLevel();
+            }, 2000);
+        }
+        
+        // Game Over
+        function gameOver() {
+            gameState = 'gameOver';
+            playGameOverSound();
+            
+            document.getElementById('gameOverTitle').textContent = 'Mission gescheitert!';
+            document.getElementById('gameOverText').textContent = `Du hast Level ${level} erreicht und ${Math.floor(height)}m geklettert!`;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        // Spiel neustarten
+        function restartGame() {
+            document.getElementById('gameOver').style.display = 'none';
+            level = 1;
+            lives = 3;
+            height = 0;
+            gameState = 'intro';
+            helicopter.x = canvas.width + 100;
+            helicopter.y = 50;
+            helicopter.isLeaving = false;
+            helicopter.hasDroppedPlayer = false;
+            player.x = canvas.width / 2;
+            player.y = 100;
+            player.velocityY = 0;
+            player.velocityX = 0;
+            player.onTower = false;
+            player.invincible = false;
+            cameraY = 0;
+            initLevel();
+        }
+        
+        // Zeichne Szene
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Himmel-Gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.5, '#E0F6FF');
+            gradient.addColorStop(1, '#90EE90');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Wolken
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            for (let i = 0; i < 5; i++) {
+                const x = (Date.now() * 0.02 + i * 200) % (canvas.width + 100);
+                const y = 50 + i * 80 - (cameraY * 0.1) % 400;
+                ctx.beginPath();
+                ctx.arc(x, y, 30, 0, Math.PI * 2);
+                ctx.arc(x + 25, y, 35, 0, Math.PI * 2);
+                ctx.arc(x + 50, y, 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            drawTower();
+            drawObstacles();
+            drawPlayer();
+            
+            if (gameState === 'intro' || helicopter.y < canvas.height) {
+                drawHelicopter();
+            }
+            
+            // Level Complete Nachricht
+            if (gameState === 'levelComplete') {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 48px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Level geschafft!', canvas.width / 2, canvas.height / 2);
+                ctx.font = '24px Arial';
+                ctx.fillStyle = '#FFF';
+                ctx.fillText(`Nächstes Level: ${level + 1}`, canvas.width / 2, canvas.height / 2 + 50);
+            }
+        }
+        
+        // Spiel-Loop
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Spiel starten
+        initLevel();
+        gameLoop();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft: Tower Defense - Basis verteidigen</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+        }
+        
+        canvas {
+            display: block;
+            background: #2c3e50;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            cursor: crosshair;
+        }
+        
+        #ui {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .stat {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 16px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stat.spawn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .stat.wave {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        
+        .stat.obsidian {
+            background: linear-gradient(135deg, #4b4b4b 0%, #1a1a1a 100%);
+        }
+        
+        .stat.debris {
+            background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+        }
+        
+        #controls {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            color: white;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        
+        #controls h3 {
+            margin-bottom: 10px;
+            color: #ffd200;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        #modeIndicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            border: 2px solid #ffd200;
+        }
+        
+        #waveInfo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            border: 2px solid #f5576c;
+        }
+        
+        #gameOver {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+            border: 3px solid #f5576c;
+        }
+        
+        #gameOver h2 {
+            font-size: 48px;
+            color: #f5576c;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #f5576c;
+        }
+        
+        #winScreen {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+            border: 3px solid #ffd200;
+        }
+        
+        #winScreen h2 {
+            font-size: 48px;
+            color: #ffd200;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #ffd200;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1400" height="800"></canvas>
+        <div id="modeIndicator">MODUS: 🏗️ Bauen</div>
+        <div id="waveInfo">WELLE: 1 | GEGNER: 0/5</div>
+        <div id="ui">
+            <div class="stat spawn">🏠 Spawn-HP: <span id="spawnHp">100</span></div>
+            <div class="stat wave">🌊 Welle: <span id="wave">1</span></div>
+            <div class="stat obsidian">⬛ Obsidian: ∞</div>
+            <div class="stat debris">💎 Trümmer: <span id="debris">50</span></div>
+            <button class="btn" onclick="toggleMode()">🔄 Modus wechseln</button>
+            <button class="btn" onclick="startWave()">▶️ Welle starten</button>
+            <button class="btn" onclick="restartGame()">🔄 Neustart</button>
+        </div>
+        <div id="controls">
+            <h3>🎮 STEUERUNG:</h3>
+            <strong>WASD</strong> = Bewegen | <strong>MAUS</strong> = Zielen | <strong>KLICK</strong> = Bauen/Abbauen/Schießen<br>
+            <strong>Q/E</strong> = Block-Typ wechseln | <strong>LEERTASTE</strong> = Modus wechseln<br>
+            <strong>ZIEL:</strong> Verteidige deinen Spawn (rotes Quadrat)! Baue Mauern mit Obsidian (unendlich).
+            Benutze Trümmer um Geschütze zu bauen! ⚠️ Wenn der Spawn 0 HP erreicht, hast du verloren! ⚠️
+        </div>
+    </div>
+    
+    <div id="gameOver">
+        <h2>💀 GAME OVER 💀</h2>
+        <p style="font-size: 24px; margin: 20px 0;">Dein Spawn wurde zerstört!</p>
+        <button class="btn" onclick="restartGame()" style="font-size: 20px; padding: 15px 30px;">Nochmal versuchen</button>
+    </div>
+    
+    <div id="winScreen">
+        <h2>🎉 GEWONNEN! 🎉</h2>
+        <p style="font-size: 24px; margin: 20px 0;">Du hast alle Wellen überstanden!</p>
+        <button class="btn" onclick="restartGame()" style="font-size: 20px; padding: 15px 30px;">Nochmal spielen</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Audio Context für Sounds
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Sound Funktionen
+        function playSound(type) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            if (type === 'shoot') {
+                oscillator.frequency.value = 550;
+                oscillator.type = 'square';
+                gainNode.gain.value = 0.08;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.07);
+            } else if (type === 'turretShoot') {
+                oscillator.frequency.value = 450;
+                oscillator.type = 'triangle';
+                gainNode.gain.value = 0.06;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.05);
+            } else if (type === 'enemyKilled') {
+                oscillator.frequency.value = 280;
+                oscillator.type = 'sawtooth';
+                gainNode.gain.value = 0.12;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.15);
+            } else if (type === 'build') {
+                oscillator.frequency.value = 500;
+                gainNode.gain.value = 0.08;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.08);
+            } else if (type === 'mine') {
+                oscillator.frequency.value = 350;
+                oscillator.type = 'triangle';
+                gainNode.gain.value = 0.08;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } else if (type === 'waveStart') {
+                oscillator.frequency.value = 200;
+                gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.4);
+            } else if (type === 'waveComplete') {
+                oscillator.frequency.value = 600;
+                gainNode.gain.value = 0.15;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.1);
+                setTimeout(() => {
+                    const osc2 = audioContext.createOscillator();
+                    const gain2 = audioContext.createGain();
+                    osc2.connect(gain2);
+                    gain2.connect(audioContext.destination);
+                    osc2.frequency.value = 800;
+                    gain2.gain.value = 0.15;
+                    osc2.start();
+                    osc2.stop(audioContext.currentTime + 0.12);
+                }, 80);
+            } else if (type === 'damage') {
+                oscillator.frequency.value = 150;
+                oscillator.type = 'sawtooth';
+                gainNode.gain.value = 0.15;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.15);
+            }
+        }
+        
+        // Block size in pixels
+        const BLOCK_SIZE = 40;
+        const WORLD_WIDTH = 35;
+        const WORLD_HEIGHT = 20;
+        
+        // Game state
+        let gameState = {
+            mode: 'build', // 'build', 'mine', 'shoot'
+            selectedBlockType: 'obsidian',
+            playerX: 17,
+            playerY: 10,
+            mouseX: 0,
+            mouseY: 0,
+            spawnHp: 100,
+            maxSpawnHp: 100,
+            wave: 1,
+            maxWave: 10,
+            waveActive: false,
+            totalEnemiesInWave: 5,
+            enemiesSpawned: 0,
+            enemiesKilled: 0,
+            debris: 50,
+            gameOver: false,
+            gameWon: false
+        };
+        
+        // Block types
+        const blockTypes = {
+            air: { color: null, solid: false, name: 'Luft' },
+            obsidian: { color: '#1a1a1a', solid: true, name: 'Obsidian', health: 500 },
+            debris: { color: '#ffd200', solid: true, name: 'Trümmer', health: 200 },
+            dirt: { color: '#8B4513', solid: true, name: 'Erde', health: 100 },
+            stone: { color: '#808080', solid: true, name: 'Stein', health: 150 },
+            turret: { color: '#4169E1', solid: true, name: 'Geschütz', health: 150, isTurret: true }
+        };
+        
+        // World (2D array)
+        let world = [];
+        let blockHealth = []; // Track health of blocks
+        
+        // Entities
+        let enemies = [];
+        let bullets = [];
+        let turrets = [];
+        
+        // Spawn point
+        let spawn = { x: 17, y: 10 };
+        
+        // Keys
+        const keys = {};
+        
+        // Initialize world with terrain
+        function initWorld() {
+            world = [];
+            blockHealth = [];
+            
+            for (let y = 0; y < WORLD_HEIGHT; y++) {
+                world[y] = [];
+                blockHealth[y] = [];
+                for (let x = 0; x < WORLD_WIDTH; x++) {
+                    // Create varied terrain
+                    if (y >= WORLD_HEIGHT - 3) {
+                        // Bottom layer - stone
+                        world[y][x] = 'stone';
+                        blockHealth[y][x] = blockTypes.stone.health;
+                    } else if (y >= WORLD_HEIGHT - 5 && Math.random() < 0.4) {
+                        // Dirt layer
+                        world[y][x] = 'dirt';
+                        blockHealth[y][x] = blockTypes.dirt.health;
+                    } else {
+                        world[y][x] = 'air';
+                        blockHealth[y][x] = 0;
+                    }
+                }
+            }
+            
+            // Create some hills and valleys
+            for (let i = 0; i < 15; i++) {
+                const hillX = Math.floor(Math.random() * WORLD_WIDTH);
+                const hillHeight = Math.floor(Math.random() * 5) + 3;
+                const hillWidth = Math.floor(Math.random() * 6) + 3;
+                
+                for (let x = hillX; x < Math.min(hillX + hillWidth, WORLD_WIDTH); x++) {
+                    for (let y = WORLD_HEIGHT - 5; y > WORLD_HEIGHT - 5 - hillHeight; y--) {
+                        if (y >= 0 && world[y][x] === 'air') {
+                            world[y][x] = Math.random() < 0.7 ? 'stone' : 'dirt';
+                            blockHealth[y][x] = blockTypes[world[y][x]].health;
+                        }
+                    }
+                }
+            }
+            
+            // Clear spawn area
+            for (let y = spawn.y - 2; y <= spawn.y + 2; y++) {
+                for (let x = spawn.x - 2; x <= spawn.x + 2; x++) {
+                    if (y >= 0 && y < WORLD_HEIGHT && x >= 0 && x < WORLD_WIDTH) {
+                        world[y][x] = 'air';
+                        blockHealth[y][x] = 0;
+                    }
+                }
+            }
+            
+            // Create platform under spawn
+            for (let x = spawn.x - 2; x <= spawn.x + 2; x++) {
+                if (spawn.y + 2 < WORLD_HEIGHT) {
+                    world[spawn.y + 2][x] = 'stone';
+                    blockHealth[spawn.y + 2][x] = blockTypes.stone.health;
+                }
+            }
+        }
+        
+        // Spawn enemy
+        function spawnEnemy() {
+            // Spawn from edges
+            const side = Math.random() < 0.5 ? 'left' : 'right';
+            let x, y;
+            
+            if (side === 'left') {
+                x = 0.5;
+            } else {
+                x = WORLD_WIDTH - 1.5;
+            }
+            
+            // Find valid Y position (on ground)
+            y = 0;
+            for (let testY = 0; testY < WORLD_HEIGHT - 1; testY++) {
+                const gridX = Math.floor(x);
+                if (world[testY][gridX] === 'air' && world[testY + 1][gridX] !== 'air') {
+                    y = testY;
+                    break;
+                }
+            }
+            
+            const waveMultiplier = gameState.wave;
+            enemies.push({
+                x: x,
+                y: y,
+                hp: 50 * waveMultiplier,
+                maxHp: 50 * waveMultiplier,
+                speed: 0.02 + (waveMultiplier * 0.005),
+                damage: 5 * waveMultiplier,
+                velocityY: 0,
+                color: `hsl(${Math.random() * 60}, 100%, 50%)`,
+                alive: true,
+                onGround: false,
+                attackCooldown: 0
+            });
+        }
+        
+        // Draw world
+        function drawWorld() {
+            for (let y = 0; y < WORLD_HEIGHT; y++) {
+                for (let x = 0; x < WORLD_WIDTH; x++) {
+                    const blockType = world[y][x];
+                    if (blockType !== 'air') {
+                        const block = blockTypes[blockType];
+                        
+                        // Draw block
+                        ctx.fillStyle = block.color;
+                        ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        
+                        // Block outline
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        
+                        // Obsidian texture
+                        if (blockType === 'obsidian') {
+                            ctx.fillStyle = 'rgba(80, 80, 150, 0.3)';
+                            ctx.fillRect(x * BLOCK_SIZE + 5, y * BLOCK_SIZE + 5, 10, 10);
+                            ctx.fillRect(x * BLOCK_SIZE + 25, y * BLOCK_SIZE + 25, 10, 10);
+                        }
+                        
+                        // Debris glow
+                        if (blockType === 'debris') {
+                            ctx.fillStyle = `rgba(255, 210, 0, ${0.3 + Math.sin(Date.now() / 300 + x + y) * 0.2})`;
+                            ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        }
+                        
+                        // Turret design
+                        if (blockType === 'turret') {
+                            ctx.fillStyle = '#2E5090';
+                            ctx.fillRect(x * BLOCK_SIZE + 8, y * BLOCK_SIZE + 15, BLOCK_SIZE - 16, 10);
+                            ctx.fillStyle = '#1E3070';
+                            ctx.fillRect(x * BLOCK_SIZE + 15, y * BLOCK_SIZE + 5, 10, 15);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Draw spawn
+        function drawSpawn() {
+            const sx = spawn.x * BLOCK_SIZE;
+            const sy = spawn.y * BLOCK_SIZE;
+            
+            // Spawn beacon
+            ctx.fillStyle = `rgba(245, 87, 108, ${0.5 + Math.sin(Date.now() / 200) * 0.3})`;
+            ctx.fillRect(sx - BLOCK_SIZE, sy - BLOCK_SIZE, BLOCK_SIZE * 2, BLOCK_SIZE * 2);
+            
+            // Spawn core
+            ctx.fillStyle = '#f5576c';
+            ctx.fillRect(sx - BLOCK_SIZE / 2, sy - BLOCK_SIZE / 2, BLOCK_SIZE, BLOCK_SIZE);
+            
+            // Health bar
+            const hpWidth = BLOCK_SIZE * 2 * (gameState.spawnHp / gameState.maxSpawnHp);
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(sx - BLOCK_SIZE, sy - BLOCK_SIZE - 10, BLOCK_SIZE * 2, 6);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(sx - BLOCK_SIZE, sy - BLOCK_SIZE - 10, hpWidth, 6);
+            
+            // Outline
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(sx - BLOCK_SIZE, sy - BLOCK_SIZE, BLOCK_SIZE * 2, BLOCK_SIZE * 2);
+        }
+        
+        // Draw player
+        function drawPlayer() {
+            const px = gameState.playerX * BLOCK_SIZE;
+            const py = gameState.playerY * BLOCK_SIZE;
+            
+            // Body (Steve-like)
+            ctx.fillStyle = '#00AAFF';
+            ctx.fillRect(px + 8, py + 8, BLOCK_SIZE - 16, BLOCK_SIZE - 16);
+            
+            // Head
+            ctx.fillStyle = '#FFCC99';
+            ctx.fillRect(px + 10, py + 10, BLOCK_SIZE - 20, BLOCK_SIZE - 20);
+            
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(px + 12, py + 14, 4, 4);
+            ctx.fillRect(px + BLOCK_SIZE - 16, py + 14, 4, 4);
+            
+            // Tool indicator
+            const dx = gameState.mouseX - (px + BLOCK_SIZE / 2);
+            const dy = gameState.mouseY - (py + BLOCK_SIZE / 2);
+            const angle = Math.atan2(dy, dx);
+            const toolLength = 15;
+            
+            ctx.strokeStyle = gameState.mode === 'shoot' ? '#FFD700' : '#666';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(px + BLOCK_SIZE / 2, py + BLOCK_SIZE / 2);
+            ctx.lineTo(
+                px + BLOCK_SIZE / 2 + Math.cos(angle) * toolLength,
+                py + BLOCK_SIZE / 2 + Math.sin(angle) * toolLength
+            );
+            ctx.stroke();
+        }
+        
+        // Draw enemies
+        function drawEnemies() {
+            enemies.forEach(enemy => {
+                if (!enemy.alive) return;
+                
+                const ex = enemy.x * BLOCK_SIZE;
+                const ey = enemy.y * BLOCK_SIZE;
+                
+                // Body (zombie-like)
+                ctx.fillStyle = enemy.color;
+                ctx.fillRect(ex + 6, ey + 6, BLOCK_SIZE - 12, BLOCK_SIZE - 12);
+                
+                // Eyes (evil)
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(ex + 10, ey + 12, 6, 6);
+                ctx.fillRect(ex + BLOCK_SIZE - 16, ey + 12, 6, 6);
+                
+                // Health bar
+                const hpWidth = (BLOCK_SIZE - 12) * (enemy.hp / enemy.maxHp);
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(ex + 6, ey + 2, BLOCK_SIZE - 12, 3);
+                ctx.fillStyle = '#00FF00';
+                ctx.fillRect(ex + 6, ey + 2, hpWidth, 3);
+            });
+        }
+        
+        // Draw bullets
+        function drawBullets() {
+            bullets.forEach(bullet => {
+                ctx.fillStyle = bullet.fromTurret ? '#4169E1' : '#FFD700';
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = bullet.fromTurret ? '#1E40AF' : '#FFA500';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+        }
+        
+        // Update player
+        function updatePlayer() {
+            let newX = gameState.playerX;
+            let newY = gameState.playerY;
+            const speed = 0.15;
+            
+            if (keys['w'] || keys['W']) newY -= speed;
+            if (keys['s'] || keys['S']) newY += speed;
+            if (keys['a'] || keys['A']) newX -= speed;
+            if (keys['d'] || keys['D']) newX += speed;
+            
+            // Clamp to world bounds
+            newX = Math.max(0, Math.min(WORLD_WIDTH - 1, newX));
+            newY = Math.max(0, Math.min(WORLD_HEIGHT - 1, newY));
+            
+            // Check collision with solid blocks
+            const gridX = Math.floor(newX);
+            const gridY = Math.floor(newY);
+            
+            if (world[gridY] && world[gridY][gridX]) {
+                const blockType = blockTypes[world[gridY][gridX]];
+                if (!blockType.solid) {
+                    gameState.playerX = newX;
+                    gameState.playerY = newY;
+                }
+            }
+        }
+        
+        // Update enemies
+        function updateEnemies() {
+            enemies.forEach(enemy => {
+                if (!enemy.alive) return;
+                
+                // Move toward spawn
+                const dx = spawn.x - enemy.x;
+                const dy = spawn.y - enemy.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 1) {
+                    // Move horizontally toward spawn
+                    const moveX = (dx / dist) * enemy.speed;
+                    let newX = enemy.x + moveX;
+                    
+                    // Check collision
+                    const gridX = Math.floor(newX);
+                    const gridY = Math.floor(enemy.y);
+                    
+                    if (gridX >= 0 && gridX < WORLD_WIDTH && world[gridY] && world[gridY][gridX]) {
+                        const blockType = blockTypes[world[gridY][gridX]];
+                        
+                        if (!blockType.solid) {
+                            enemy.x = newX;
+                        } else {
+                            // Attack block
+                            if (enemy.attackCooldown <= 0) {
+                                blockHealth[gridY][gridX] -= enemy.damage;
+                                enemy.attackCooldown = 60;
+                                
+                                if (blockHealth[gridY][gridX] <= 0) {
+                                    world[gridY][gridX] = 'air';
+                                    blockHealth[gridY][gridX] = 0;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Gravity and ground check
+                    if (gridY + 1 < WORLD_HEIGHT) {
+                        const below = world[gridY + 1][Math.floor(enemy.x)];
+                        if (below === 'air') {
+                            enemy.velocityY += 0.5; // Gravity
+                            enemy.y += enemy.velocityY * 0.05;
+                        } else {
+                            enemy.velocityY = 0;
+                            enemy.onGround = true;
+                        }
+                    }
+                } else {
+                    // Attack spawn
+                    if (enemy.attackCooldown <= 0) {
+                        gameState.spawnHp -= enemy.damage;
+                        enemy.attackCooldown = 60;
+                        playSound('damage');
+                        
+                        if (gameState.spawnHp <= 0) {
+                            gameState.gameOver = true;
+                        }
+                    }
+                }
+                
+                // Update cooldown
+                if (enemy.attackCooldown > 0) {
+                    enemy.attackCooldown--;
+                }
+            });
+        }
+        
+        // Update turrets
+        function updateTurrets() {
+            // Find all turrets
+            turrets = [];
+            for (let y = 0; y < WORLD_HEIGHT; y++) {
+                for (let x = 0; x < WORLD_WIDTH; x++) {
+                    if (world[y][x] === 'turret') {
+                        turrets.push({ x, y, cooldown: 0 });
+                    }
+                }
+            }
+            
+            // Turrets shoot at enemies
+            turrets.forEach(turret => {
+                if (turret.cooldown > 0) {
+                    turret.cooldown--;
+                    return;
+                }
+                
+                // Find nearest enemy
+                let nearestEnemy = null;
+                let nearestDist = Infinity;
+                
+                enemies.forEach(enemy => {
+                    if (!enemy.alive) return;
+                    
+                    const dx = enemy.x - turret.x;
+                    const dy = enemy.y - turret.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < 10 && dist < nearestDist) {
+                        nearestEnemy = enemy;
+                        nearestDist = dist;
+                    }
+                });
+                
+                // Shoot at nearest enemy
+                if (nearestEnemy) {
+                    const tx = turret.x * BLOCK_SIZE + BLOCK_SIZE / 2;
+                    const ty = turret.y * BLOCK_SIZE + BLOCK_SIZE / 2;
+                    const ex = nearestEnemy.x * BLOCK_SIZE + BLOCK_SIZE / 2;
+                    const ey = nearestEnemy.y * BLOCK_SIZE + BLOCK_SIZE / 2;
+                    
+                    const dx = ex - tx;
+                    const dy = ey - ty;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist > 0) {
+                        const speed = 10;
+                        bullets.push({
+                            x: tx,
+                            y: ty,
+                            velocityX: (dx / dist) * speed,
+                            velocityY: (dy / dist) * speed,
+                            fromTurret: true
+                        });
+                        
+                        turret.cooldown = 30;
+                        playSound('turretShoot');
+                    }
+                }
+            });
+        }
+        
+        // Update bullets
+        function updateBullets() {
+            bullets = bullets.filter(bullet => {
+                bullet.x += bullet.velocityX;
+                bullet.y += bullet.velocityY;
+                
+                // Check world bounds
+                const gridX = Math.floor(bullet.x / BLOCK_SIZE);
+                const gridY = Math.floor(bullet.y / BLOCK_SIZE);
+                
+                if (gridX < 0 || gridX >= WORLD_WIDTH || gridY < 0 || gridY >= WORLD_HEIGHT) {
+                    return false;
+                }
+                
+                // Check block collision
+                if (world[gridY] && world[gridY][gridX]) {
+                    const blockType = blockTypes[world[gridY][gridX]];
+                    if (blockType.solid) {
+                        return false;
+                    }
+                }
+                
+                // Check enemy collision
+                let hit = false;
+                enemies.forEach(enemy => {
+                    if (!enemy.alive) return;
+                    
+                    const dx = bullet.x / BLOCK_SIZE - enemy.x;
+                    const dy = bullet.y / BLOCK_SIZE - enemy.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < 0.5) {
+                        enemy.hp -= 25;
+                        if (enemy.hp <= 0) {
+                            enemy.alive = false;
+                            gameState.enemiesKilled++;
+                            gameState.debris += 5; // Reward debris
+                            playSound('enemyKilled');
+                        }
+                        hit = true;
+                    }
+                });
+                
+                return !hit;
+            });
+        }
+        
+        // Build block
+        function buildBlock(targetX, targetY) {
+            const gridX = Math.floor(targetX / BLOCK_SIZE);
+            const gridY = Math.floor(targetY / BLOCK_SIZE);
+            
+            if (gridX >= 0 && gridX < WORLD_WIDTH && gridY >= 0 && gridY < WORLD_HEIGHT) {
+                if (world[gridY][gridX] === 'air') {
+                    // Don't build on player or spawn
+                    if (Math.abs(gridX - gameState.playerX) < 0.5 && Math.abs(gridY - gameState.playerY) < 0.5) {
+                        return;
+                    }
+                    if (Math.abs(gridX - spawn.x) < 1 && Math.abs(gridY - spawn.y) < 1) {
+                        return;
+                    }
+                    
+                    // Check resources
+                    if (gameState.selectedBlockType === 'turret') {
+                        if (gameState.debris >= 20) {
+                            world[gridY][gridX] = 'turret';
+                            blockHealth[gridY][gridX] = blockTypes.turret.health;
+                            gameState.debris -= 20;
+                            playSound('build');
+                        }
+                    } else if (gameState.selectedBlockType === 'obsidian') {
+                        // Obsidian is infinite
+                        world[gridY][gridX] = 'obsidian';
+                        blockHealth[gridY][gridX] = blockTypes.obsidian.health;
+                        playSound('build');
+                    } else if (gameState.selectedBlockType === 'debris') {
+                        if (gameState.debris >= 5) {
+                            world[gridY][gridX] = 'debris';
+                            blockHealth[gridY][gridX] = blockTypes.debris.health;
+                            gameState.debris -= 5;
+                            playSound('build');
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Mine block
+        function mineBlock(targetX, targetY) {
+            const gridX = Math.floor(targetX / BLOCK_SIZE);
+            const gridY = Math.floor(targetY / BLOCK_SIZE);
+            
+            if (gridX >= 0 && gridX < WORLD_WIDTH && gridY >= 0 && gridY < WORLD_HEIGHT) {
+                const blockType = world[gridY][gridX];
+                if (blockType !== 'air') {
+                    world[gridY][gridX] = 'air';
+                    blockHealth[gridY][gridX] = 0;
+                    playSound('mine');
+                    
+                    // Return debris for non-natural blocks
+                    if (blockType === 'turret') {
+                        gameState.debris += 10;
+                    } else if (blockType === 'debris') {
+                        gameState.debris += 3;
+                    }
+                }
+            }
+        }
+        
+        // Shoot
+        function shoot(targetX, targetY) {
+            const px = gameState.playerX * BLOCK_SIZE + BLOCK_SIZE / 2;
+            const py = gameState.playerY * BLOCK_SIZE + BLOCK_SIZE / 2;
+            
+            const dx = targetX - px;
+            const dy = targetY - py;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist > 0) {
+                const speed = 12;
+                bullets.push({
+                    x: px,
+                    y: py,
+                    velocityX: (dx / dist) * speed,
+                    velocityY: (dy / dist) * speed,
+                    fromTurret: false
+                });
+                playSound('shoot');
+            }
+        }
+        
+        // Toggle mode
+        function toggleMode() {
+            if (gameState.mode === 'build') {
+                gameState.mode = 'mine';
+                document.getElementById('modeIndicator').innerHTML = 'MODUS: ⛏️ Abbauen';
+            } else if (gameState.mode === 'mine') {
+                gameState.mode = 'shoot';
+                document.getElementById('modeIndicator').innerHTML = 'MODUS: 🔫 Schießen';
+            } else {
+                gameState.mode = 'build';
+                document.getElementById('modeIndicator').innerHTML = 'MODUS: 🏗️ Bauen';
+            }
+        }
+        
+        // Change block type
+        function changeBlockType(direction) {
+            const types = ['obsidian', 'debris', 'turret'];
+            const currentIndex = types.indexOf(gameState.selectedBlockType);
+            let newIndex = currentIndex + direction;
+            
+            if (newIndex < 0) newIndex = types.length - 1;
+            if (newIndex >= types.length) newIndex = 0;
+            
+            gameState.selectedBlockType = types[newIndex];
+        }
+        
+        // Start wave
+        function startWave() {
+            if (gameState.waveActive) return;
+            if (gameState.gameOver || gameState.gameWon) return;
+            
+            gameState.waveActive = true;
+            gameState.totalEnemiesInWave = 5 + (gameState.wave - 1) * 3;
+            gameState.enemiesSpawned = 0;
+            gameState.enemiesKilled = 0;
+            playSound('waveStart');
+        }
+        
+        // Update wave
+        function updateWave() {
+            if (!gameState.waveActive) return;
+            
+            // Spawn enemies gradually
+            if (gameState.enemiesSpawned < gameState.totalEnemiesInWave) {
+                if (Math.random() < 0.02) {
+                    spawnEnemy();
+                    gameState.enemiesSpawned++;
+                }
+            }
+            
+            // Check if wave is complete
+            if (gameState.enemiesSpawned >= gameState.totalEnemiesInWave && 
+                gameState.enemiesKilled >= gameState.totalEnemiesInWave) {
+                gameState.waveActive = false;
+                gameState.wave++;
+                playSound('waveComplete');
+                
+                // Heal spawn a bit
+                gameState.spawnHp = Math.min(gameState.maxSpawnHp, gameState.spawnHp + 20);
+                
+                // Check win condition
+                if (gameState.wave > gameState.maxWave) {
+                    gameState.gameWon = true;
+                }
+            }
+        }
+        
+        // Update UI
+        function updateUI() {
+            document.getElementById('spawnHp').textContent = Math.max(0, Math.floor(gameState.spawnHp));
+            document.getElementById('wave').textContent = gameState.wave;
+            document.getElementById('debris').textContent = gameState.debris;
+            
+            document.getElementById('waveInfo').textContent = 
+                `WELLE: ${gameState.wave} | GEGNER: ${gameState.enemiesKilled}/${gameState.totalEnemiesInWave}`;
+            
+            // Show game over
+            if (gameState.gameOver) {
+                document.getElementById('gameOver').style.display = 'block';
+            }
+            
+            // Show win screen
+            if (gameState.gameWon) {
+                document.getElementById('winScreen').style.display = 'block';
+            }
+        }
+        
+        // Game loop
+        function gameLoop() {
+            if (gameState.gameOver || gameState.gameWon) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+            
+            // Clear canvas
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update
+            updatePlayer();
+            updateEnemies();
+            updateBullets();
+            updateTurrets();
+            updateWave();
+            
+            // Draw
+            drawWorld();
+            drawSpawn();
+            drawPlayer();
+            drawEnemies();
+            drawBullets();
+            
+            // Draw build preview
+            if (gameState.mode === 'build') {
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+                const gridX = Math.floor(gameState.mouseX / BLOCK_SIZE);
+                const gridY = Math.floor(gameState.mouseY / BLOCK_SIZE);
+                ctx.fillRect(gridX * BLOCK_SIZE, gridY * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                
+                // Show selected block type
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 12px monospace';
+                ctx.fillText(blockTypes[gameState.selectedBlockType].name, gridX * BLOCK_SIZE + 5, gridY * BLOCK_SIZE + 15);
+            } else if (gameState.mode === 'mine') {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                const gridX = Math.floor(gameState.mouseX / BLOCK_SIZE);
+                const gridY = Math.floor(gameState.mouseY / BLOCK_SIZE);
+                ctx.fillRect(gridX * BLOCK_SIZE, gridY * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            }
+            
+            // Update UI
+            updateUI();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Restart game
+        function restartGame() {
+            gameState.spawnHp = gameState.maxSpawnHp;
+            gameState.wave = 1;
+            gameState.waveActive = false;
+            gameState.totalEnemiesInWave = 5;
+            gameState.enemiesSpawned = 0;
+            gameState.enemiesKilled = 0;
+            gameState.debris = 50;
+            gameState.playerX = 17;
+            gameState.playerY = 10;
+            gameState.mode = 'build';
+            gameState.gameOver = false;
+            gameState.gameWon = false;
+            
+            enemies = [];
+            bullets = [];
+            turrets = [];
+            
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('winScreen').style.display = 'none';
+            document.getElementById('modeIndicator').innerHTML = 'MODUS: 🏗️ Bauen';
+            
+            initWorld();
+        }
+        
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            
+            if (e.key === ' ') {
+                e.preventDefault();
+                toggleMode();
+            }
+            
+            if (e.key === 'q' || e.key === 'Q') {
+                changeBlockType(-1);
+            }
+            
+            if (e.key === 'e' || e.key === 'E') {
+                changeBlockType(1);
+            }
+            
+            if (e.key === 'Enter') {
+                startWave();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            gameState.mouseX = e.clientX - rect.left;
+            gameState.mouseY = e.clientY - rect.top;
+        });
+        
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            if (gameState.mode === 'build') {
+                buildBlock(mouseX, mouseY);
+            } else if (gameState.mode === 'mine') {
+                mineBlock(mouseX, mouseY);
+            } else if (gameState.mode === 'shoot') {
+                shoot(mouseX, mouseY);
+            }
+        });
+        
+        // Initialize and start
+        initWorld();
+        gameLoop();
+    </script>
+</body>
+</html>
+

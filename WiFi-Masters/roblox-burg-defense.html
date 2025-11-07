@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Burg Defense - Tower Defense Spiel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(to bottom, #87CEEB, #98D8E8);
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        
+        #gameCanvas {
+            border: 5px solid #654321;
+            background: linear-gradient(to bottom, #8B7355 0%, #6B8E23 30%, #228B22 100%);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            cursor: crosshair;
+        }
+        
+        .game-info {
+            display: flex;
+            gap: 30px;
+            margin-top: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 15px 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        
+        .weapon-selector {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .weapon-btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border: 3px solid #2c3e50;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #ecf0f1;
+        }
+        
+        .weapon-btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .weapon-btn.active {
+            background: #3498db;
+            color: white;
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.6);
+        }
+        
+        .game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+        }
+        
+        .game-over h2 {
+            font-size: 48px;
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+        
+        .game-over button {
+            padding: 15px 30px;
+            font-size: 20px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        
+        .game-over button:hover {
+            background: #2ecc71;
+        }
+    </style>
+</head>
+<body>
+    <h1>🏰 BURG DEFENSE 🏰</h1>
+    <canvas id="gameCanvas" width="1200" height="700"></canvas>
+    
+    <div class="game-info">
+        <div class="info-item">
+            <span class="info-label">❤️ LEBEN</span>
+            <span class="info-value" id="health">1000</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">👾 WELLE</span>
+            <span class="info-value" id="wave">1</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">💀 KILLS</span>
+            <span class="info-value" id="kills">0</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">🎯 WAFFE</span>
+            <span class="info-value" id="currentWeapon">SNIPER</span>
+        </div>
+    </div>
+    
+    <div class="weapon-selector">
+        <button class="weapon-btn active" onclick="selectWeapon('sniper')">🎯 SNIPER</button>
+        <button class="weapon-btn" onclick="selectWeapon('machinegun')">⚡ MASCHINENGEWEHR</button>
+        <button class="weapon-btn" onclick="selectWeapon('flamethrower')">🔥 FEUERPISTOLE</button>
+    </div>
+    
+    <div class="game-over" id="gameOver">
+        <h2>SPIEL VORBEI!</h2>
+        <p style="font-size: 24px;">Deine Burg wurde zerstört!</p>
+        <p style="font-size: 20px; margin-top: 10px;">Erreichte Welle: <span id="finalWave"></span></p>
+        <p style="font-size: 20px;">Kills: <span id="finalKills"></span></p>
+        <button onclick="restartGame()">NEU STARTEN</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Audio Context für Sounds
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Spiel Variablen
+        let health = 1000;
+        let wave = 1;
+        let kills = 0;
+        let currentWeapon = 'sniper';
+        let enemies = [];
+        let bullets = [];
+        let particles = [];
+        let gameRunning = true;
+        let lastShot = 0;
+        let waveInProgress = false;
+        let enemiesThisWave = 0;
+        let enemiesSpawned = 0;
+        
+        // Burg Position (Spawnpunkt)
+        const castle = {
+            x: canvas.width / 2,
+            y: canvas.height - 100,
+            width: 150,
+            height: 120
+        };
+        
+        // Türme
+        const towers = [
+            { x: 200, y: canvas.height - 80, width: 60, height: 100 },
+            { x: canvas.width - 260, y: canvas.height - 80, width: 60, height: 100 }
+        ];
+        
+        // Waffen Eigenschaften
+        const weapons = {
+            sniper: {
+                name: 'SNIPER',
+                damage: 100,
+                fireRate: 800,
+                bulletSpeed: 20,
+                bulletSize: 4,
+                color: '#FFD700',
+                sound: 'high'
+            },
+            machinegun: {
+                name: 'MASCHINENGEWEHR',
+                damage: 20,
+                fireRate: 100,
+                bulletSpeed: 15,
+                bulletSize: 3,
+                color: '#FF8C00',
+                sound: 'mid'
+            },
+            flamethrower: {
+                name: 'FEUERPISTOLE',
+                damage: 5,
+                fireRate: 50,
+                bulletSpeed: 10,
+                bulletSize: 8,
+                color: '#FF4500',
+                sound: 'low',
+                pierce: true
+            }
+        };
+        
+        // Sound Funktionen
+        function playSound(type) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            if (type === 'shoot') {
+                const weapon = weapons[currentWeapon];
+                if (weapon.sound === 'high') {
+                    oscillator.frequency.value = 800;
+                } else if (weapon.sound === 'mid') {
+                    oscillator.frequency.value = 400;
+                } else {
+                    oscillator.frequency.value = 200;
+                }
+                gainNode.gain.value = 0.1;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.05);
+            } else if (type === 'hit') {
+                oscillator.frequency.value = 300;
+                gainNode.gain.value = 0.15;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } else if (type === 'wave') {
+                oscillator.frequency.value = 200;
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } else if (type === 'damage') {
+                oscillator.frequency.value = 150;
+                gainNode.gain.value = 0.2;
+                oscillator.type = 'sawtooth';
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.2);
+            }
+        }
+        
+        // Waffe wechseln
+        function selectWeapon(weapon) {
+            currentWeapon = weapon;
+            document.getElementById('currentWeapon').textContent = weapons[weapon].name;
+            
+            // Button Styles aktualisieren
+            document.querySelectorAll('.weapon-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+        
+        // Gegner Klasse
+        class Enemy {
+            constructor(type) {
+                this.x = Math.random() * canvas.width;
+                this.y = -50;
+                this.type = type;
+                
+                if (type === 'normal') {
+                    this.size = 20;
+                    this.speed = 1 + wave * 0.1;
+                    this.health = 50 + wave * 10;
+                    this.maxHealth = this.health;
+                    this.color = '#8B0000';
+                } else if (type === 'fast') {
+                    this.size = 15;
+                    this.speed = 2 + wave * 0.15;
+                    this.health = 30 + wave * 5;
+                    this.maxHealth = this.health;
+                    this.color = '#FF1493';
+                } else if (type === 'tank') {
+                    this.size = 35;
+                    this.speed = 0.5 + wave * 0.05;
+                    this.health = 200 + wave * 50;
+                    this.maxHealth = this.health;
+                    this.color = '#4B0082';
+                }
+                
+                this.alive = true;
+            }
+            
+            update() {
+                // Bewege zum Spawnpunkt (Burg)
+                const dx = castle.x - this.x;
+                const dy = castle.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 5) {
+                    this.x += (dx / dist) * this.speed;
+                    this.y += (dy / dist) * this.speed;
+                } else {
+                    // Greife Burg an
+                    health -= 10;
+                    this.alive = false;
+                    playSound('damage');
+                    updateDisplay();
+                }
+            }
+            
+            draw() {
+                // Gegner
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Augen
+                ctx.fillStyle = '#FF0000';
+                ctx.beginPath();
+                ctx.arc(this.x - this.size/3, this.y - this.size/4, this.size/6, 0, Math.PI * 2);
+                ctx.arc(this.x + this.size/3, this.y - this.size/4, this.size/6, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Gesundheitsbalken
+                const barWidth = this.size * 2;
+                const barHeight = 4;
+                const healthPercent = this.health / this.maxHealth;
+                
+                ctx.fillStyle = '#000';
+                ctx.fillRect(this.x - barWidth/2, this.y - this.size - 10, barWidth, barHeight);
+                ctx.fillStyle = healthPercent > 0.5 ? '#0F0' : healthPercent > 0.25 ? '#FF0' : '#F00';
+                ctx.fillRect(this.x - barWidth/2, this.y - this.size - 10, barWidth * healthPercent, barHeight);
+            }
+            
+            takeDamage(damage) {
+                this.health -= damage;
+                if (this.health <= 0) {
+                    this.alive = false;
+                    kills++;
+                    updateDisplay();
+                    createExplosion(this.x, this.y, this.color);
+                    playSound('hit');
+                }
+            }
+        }
+        
+        // Bullet Klasse
+        class Bullet {
+            constructor(x, y, targetX, targetY) {
+                this.x = x;
+                this.y = y;
+                const weapon = weapons[currentWeapon];
+                
+                const dx = targetX - x;
+                const dy = targetY - y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                this.vx = (dx / dist) * weapon.bulletSpeed;
+                this.vy = (dy / dist) * weapon.bulletSpeed;
+                this.damage = weapon.damage;
+                this.size = weapon.bulletSize;
+                this.color = weapon.color;
+                this.pierce = weapon.pierce || false;
+                this.active = true;
+                this.hitEnemies = new Set();
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // Entferne Bullet wenn außerhalb
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.active = false;
+                }
+                
+                // Kollision mit Gegnern
+                for (let enemy of enemies) {
+                    if (enemy.alive && !this.hitEnemies.has(enemy)) {
+                        const dx = this.x - enemy.x;
+                        const dy = this.y - enemy.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < enemy.size + this.size) {
+                            enemy.takeDamage(this.damage);
+                            this.hitEnemies.add(enemy);
+                            
+                            if (!this.pierce) {
+                                this.active = false;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+        
+        // Partikel für Explosionen
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8;
+                this.life = 30;
+                this.maxLife = 30;
+                this.color = color;
+                this.size = Math.random() * 4 + 2;
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.2; // Gravity
+                this.life--;
+            }
+            
+            draw() {
+                ctx.globalAlpha = this.life / this.maxLife;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+        
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+        
+        // Spawn neue Welle
+        function spawnWave() {
+            if (waveInProgress) return;
+            
+            waveInProgress = true;
+            enemiesThisWave = 5 + wave * 3;
+            enemiesSpawned = 0;
+            
+            playSound('wave');
+            
+            const spawnInterval = setInterval(() => {
+                if (enemiesSpawned >= enemiesThisWave) {
+                    clearInterval(spawnInterval);
+                    return;
+                }
+                
+                // Verschiedene Gegnertypen spawnen
+                let type = 'normal';
+                const rand = Math.random();
+                if (rand < 0.3) type = 'fast';
+                else if (rand < 0.5 && wave > 2) type = 'tank';
+                
+                enemies.push(new Enemy(type));
+                enemiesSpawned++;
+            }, 1000);
+        }
+        
+        // Zeichne Umgebung
+        function drawEnvironment() {
+            // Hauptburg (Spawnpunkt)
+            // Wände
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(castle.x - castle.width/2, castle.y - castle.height, castle.width, castle.height);
+            
+            // Dach
+            ctx.fillStyle = '#CD5C5C';
+            ctx.beginPath();
+            ctx.moveTo(castle.x - castle.width/2 - 10, castle.y - castle.height);
+            ctx.lineTo(castle.x, castle.y - castle.height - 30);
+            ctx.lineTo(castle.x + castle.width/2 + 10, castle.y - castle.height);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Fenster
+            ctx.fillStyle = '#4682B4';
+            ctx.fillRect(castle.x - 30, castle.y - 80, 20, 25);
+            ctx.fillRect(castle.x + 10, castle.y - 80, 20, 25);
+            
+            // Tür
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(castle.x - 15, castle.y - 40, 30, 40);
+            
+            // Türme
+            for (let tower of towers) {
+                // Turm Wände
+                ctx.fillStyle = '#696969';
+                ctx.fillRect(tower.x - tower.width/2, tower.y - tower.height, tower.width, tower.height);
+                
+                // Zinnen
+                ctx.fillStyle = '#808080';
+                for (let i = 0; i < 4; i++) {
+                    const zx = tower.x - tower.width/2 + i * 20;
+                    ctx.fillRect(zx, tower.y - tower.height - 10, 15, 10);
+                }
+            }
+            
+            // Boden/Gras
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+        }
+        
+        // Mouse Click Event
+        canvas.addEventListener('click', (e) => {
+            if (!gameRunning) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            const now = Date.now();
+            const weapon = weapons[currentWeapon];
+            
+            if (now - lastShot > weapon.fireRate) {
+                bullets.push(new Bullet(castle.x, castle.y - castle.height/2, mouseX, mouseY));
+                lastShot = now;
+                playSound('shoot');
+            }
+        });
+        
+        // Update Display
+        function updateDisplay() {
+            document.getElementById('health').textContent = Math.max(0, health);
+            document.getElementById('wave').textContent = wave;
+            document.getElementById('kills').textContent = kills;
+            
+            if (health <= 0) {
+                gameOver();
+            }
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('finalWave').textContent = wave;
+            document.getElementById('finalKills').textContent = kills;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        function restartGame() {
+            health = 1000;
+            wave = 1;
+            kills = 0;
+            enemies = [];
+            bullets = [];
+            particles = [];
+            gameRunning = true;
+            waveInProgress = false;
+            enemiesThisWave = 0;
+            enemiesSpawned = 0;
+            
+            document.getElementById('gameOver').style.display = 'none';
+            updateDisplay();
+            spawnWave();
+        }
+        
+        // Game Loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Zeichne Umgebung
+            drawEnvironment();
+            
+            if (gameRunning) {
+                // Update und zeichne Gegner
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    if (enemies[i].alive) {
+                        enemies[i].update();
+                        enemies[i].draw();
+                    } else {
+                        enemies.splice(i, 1);
+                    }
+                }
+                
+                // Update und zeichne Bullets
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    if (bullets[i].active) {
+                        bullets[i].update();
+                        bullets[i].draw();
+                    } else {
+                        bullets.splice(i, 1);
+                    }
+                }
+                
+                // Update und zeichne Partikel
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    particles[i].update();
+                    particles[i].draw();
+                    if (particles[i].life <= 0) {
+                        particles.splice(i, 1);
+                    }
+                }
+                
+                // Check ob Welle beendet
+                if (waveInProgress && enemies.length === 0 && enemiesSpawned >= enemiesThisWave) {
+                    waveInProgress = false;
+                    wave++;
+                    updateDisplay();
+                    setTimeout(() => spawnWave(), 3000);
+                }
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Start Game
+        updateDisplay();
+        spawnWave();
+        gameLoop();
+    </script>
+</body>
+</html>

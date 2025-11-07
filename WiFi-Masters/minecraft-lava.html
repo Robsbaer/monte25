@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft: Lava Survival Shooter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+        
+        canvas {
+            display: block;
+            background: #87CEEB;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            cursor: crosshair;
+        }
+        
+        #ui {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .stat {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 16px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stat.ammo {
+            background: linear-gradient(135deg, #f9ca24 0%, #f0932b 100%);
+        }
+        
+        .stat.enemies {
+            background: linear-gradient(135deg, #eb4d4b 0%, #c0392b 100%);
+        }
+        
+        .stat.blocks {
+            background: linear-gradient(135deg, #6ab04c 0%, #22a6b3 100%);
+        }
+        
+        #controls {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            color: white;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        
+        #controls h3 {
+            margin-bottom: 10px;
+            color: #f9ca24;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #6ab04c 0%, #22a6b3 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        #modeIndicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        #winScreen {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+            border: 3px solid #f9ca24;
+        }
+        
+        #winScreen h2 {
+            font-size: 48px;
+            color: #f9ca24;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #f9ca24;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1200" height="700"></canvas>
+        <div id="modeIndicator">MODUS: 🔫 Schießen</div>
+        <div id="ui">
+            <div class="stat ammo">🔫 Munition: <span id="ammo">150</span></div>
+            <div class="stat enemies">👹 Gegner: <span id="enemies">15</span></div>
+            <div class="stat blocks">📦 Blöcke: <span id="blocks">50</span></div>
+            <button class="btn" onclick="toggleMode()">🔄 Modus wechseln</button>
+            <button class="btn" onclick="restartGame()">🔄 Neustart</button>
+        </div>
+        <div id="controls">
+            <h3>🎮 STEUERUNG:</h3>
+            <strong>WASD</strong> = Bewegen | <strong>MAUS</strong> = Zielen | <strong>KLICK</strong> = Schießen/Bauen/Abbauen<br>
+            <strong>Q/E</strong> = Block-Typ wechseln | <strong>LEERTASTE</strong> = Modus wechseln (Schießen ↔ Bauen/Abbauen)<br>
+            <strong>ZIEL:</strong> Töte alle 15 Gegner bevor die Munition leer ist! ⚠️ Lava am Boden ist TÖDLICH! ⚠️
+        </div>
+    </div>
+    
+    <div id="winScreen">
+        <h2>🎉 GEWONNEN! 🎉</h2>
+        <p style="font-size: 24px; margin: 20px 0;">Du hast alle Gegner besiegt!</p>
+        <button class="btn" onclick="restartGame()" style="font-size: 20px; padding: 15px 30px;">Nochmal spielen</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Block size in pixels
+        const BLOCK_SIZE = 40;
+        const WORLD_WIDTH = 30;
+        const WORLD_HEIGHT = 17;
+        
+        // Game state
+        let gameState = {
+            mode: 'shoot', // 'shoot', 'build', 'mine'
+            ammo: 150,
+            totalEnemies: 15,
+            remainingEnemies: 15,
+            blocks: 50,
+            selectedBlockType: 'dirt',
+            playerX: 5,
+            playerY: 5,
+            mouseX: 0,
+            mouseY: 0,
+            gameWon: false
+        };
+        
+        // Block types
+        const blockTypes = {
+            air: { color: null, solid: false, name: 'Luft' },
+            dirt: { color: '#8B4513', solid: true, name: 'Erde' },
+            stone: { color: '#808080', solid: true, name: 'Stein' },
+            wood: { color: '#DEB887', solid: true, name: 'Holz' },
+            lava: { color: '#FF4500', solid: false, deadly: true, name: 'Lava' }
+        };
+        
+        // World (2D array)
+        let world = [];
+        
+        // Entities
+        let enemies = [];
+        let bullets = [];
+        
+        // Keys
+        const keys = {};
+        
+        // Initialize world
+        function initWorld() {
+            world = [];
+            for (let y = 0; y < WORLD_HEIGHT; y++) {
+                world[y] = [];
+                for (let x = 0; x < WORLD_WIDTH; x++) {
+                    if (y >= WORLD_HEIGHT - 1) {
+                        // Bottom is LAVA!
+                        world[y][x] = 'lava';
+                    } else if (y >= WORLD_HEIGHT - 5 && Math.random() < 0.3) {
+                        // Random platforms above lava
+                        world[y][x] = Math.random() < 0.5 ? 'stone' : 'dirt';
+                    } else if (y >= WORLD_HEIGHT - 3 && (x < 3 || x > WORLD_WIDTH - 4)) {
+                        // Safe edges
+                        world[y][x] = 'stone';
+                    } else {
+                        world[y][x] = 'air';
+                    }
+                }
+            }
+            
+            // Create some platforms in the middle
+            for (let i = 0; i < 10; i++) {
+                const px = Math.floor(Math.random() * (WORLD_WIDTH - 6)) + 3;
+                const py = Math.floor(Math.random() * (WORLD_HEIGHT - 7)) + 3;
+                const width = Math.floor(Math.random() * 4) + 2;
+                
+                for (let x = px; x < Math.min(px + width, WORLD_WIDTH); x++) {
+                    world[py][x] = Math.random() < 0.7 ? 'stone' : 'dirt';
+                }
+            }
+            
+            // Safe spawn area
+            for (let y = 3; y < 6; y++) {
+                for (let x = 4; x < 7; x++) {
+                    if (y === 5) {
+                        world[y][x] = 'stone';
+                    } else {
+                        world[y][x] = 'air';
+                    }
+                }
+            }
+        }
+        
+        // Initialize enemies
+        function initEnemies() {
+            enemies = [];
+            for (let i = 0; i < gameState.totalEnemies; i++) {
+                let x, y, attempts = 0;
+                do {
+                    x = Math.floor(Math.random() * (WORLD_WIDTH - 4)) + 2;
+                    y = Math.floor(Math.random() * (WORLD_HEIGHT - 5)) + 2;
+                    attempts++;
+                } while ((world[y][x] !== 'air' || isNearPlayer(x, y)) && attempts < 100);
+                
+                enemies.push({
+                    x: x,
+                    y: y,
+                    hp: 100,
+                    maxHp: 100,
+                    velocityX: (Math.random() - 0.5) * 0.5,
+                    velocityY: 0,
+                    color: '#FF0000',
+                    alive: true
+                });
+            }
+        }
+        
+        function isNearPlayer(x, y) {
+            const dx = x - gameState.playerX;
+            const dy = y - gameState.playerY;
+            return Math.sqrt(dx * dx + dy * dy) < 5;
+        }
+        
+        // Draw world
+        function drawWorld() {
+            for (let y = 0; y < WORLD_HEIGHT; y++) {
+                for (let x = 0; x < WORLD_WIDTH; x++) {
+                    const blockType = world[y][x];
+                    if (blockType !== 'air') {
+                        const block = blockTypes[blockType];
+                        ctx.fillStyle = block.color;
+                        ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        
+                        // Block outline
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        
+                        // Lava animation
+                        if (blockType === 'lava') {
+                            ctx.fillStyle = `rgba(255, 140, 0, ${0.3 + Math.sin(Date.now() / 200 + x + y) * 0.3})`;
+                            ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Draw player
+        function drawPlayer() {
+            const px = gameState.playerX * BLOCK_SIZE;
+            const py = gameState.playerY * BLOCK_SIZE;
+            
+            // Body
+            ctx.fillStyle = '#00AA00';
+            ctx.fillRect(px + 8, py + 8, BLOCK_SIZE - 16, BLOCK_SIZE - 16);
+            
+            // Head
+            ctx.fillStyle = '#FFCC99';
+            ctx.fillRect(px + 10, py + 10, BLOCK_SIZE - 20, BLOCK_SIZE - 20);
+            
+            // Eyes
+            ctx.fillStyle = '#000';
+            ctx.fillRect(px + 12, py + 14, 4, 4);
+            ctx.fillRect(px + BLOCK_SIZE - 16, py + 14, 4, 4);
+            
+            // Weapon direction indicator
+            const dx = gameState.mouseX - (px + BLOCK_SIZE / 2);
+            const dy = gameState.mouseY - (py + BLOCK_SIZE / 2);
+            const angle = Math.atan2(dy, dx);
+            const weaponLength = 15;
+            
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(px + BLOCK_SIZE / 2, py + BLOCK_SIZE / 2);
+            ctx.lineTo(
+                px + BLOCK_SIZE / 2 + Math.cos(angle) * weaponLength,
+                py + BLOCK_SIZE / 2 + Math.sin(angle) * weaponLength
+            );
+            ctx.stroke();
+        }
+        
+        // Draw enemies
+        function drawEnemies() {
+            enemies.forEach(enemy => {
+                if (!enemy.alive) return;
+                
+                const ex = enemy.x * BLOCK_SIZE;
+                const ey = enemy.y * BLOCK_SIZE;
+                
+                // Body
+                ctx.fillStyle = enemy.color;
+                ctx.fillRect(ex + 6, ey + 6, BLOCK_SIZE - 12, BLOCK_SIZE - 12);
+                
+                // Eyes (evil)
+                ctx.fillStyle = '#FFFF00';
+                ctx.fillRect(ex + 10, ey + 12, 6, 6);
+                ctx.fillRect(ex + BLOCK_SIZE - 16, ey + 12, 6, 6);
+                
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(ex + 12, ey + 14, 3, 3);
+                ctx.fillRect(ex + BLOCK_SIZE - 14, ey + 14, 3, 3);
+                
+                // Health bar
+                const hpWidth = (BLOCK_SIZE - 12) * (enemy.hp / enemy.maxHp);
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(ex + 6, ey + 2, BLOCK_SIZE - 12, 3);
+                ctx.fillStyle = '#00FF00';
+                ctx.fillRect(ex + 6, ey + 2, hpWidth, 3);
+            });
+        }
+        
+        // Draw bullets
+        function drawBullets() {
+            bullets.forEach(bullet => {
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = '#FFA500';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+        }
+        
+        // Update player
+        function updatePlayer() {
+            let newX = gameState.playerX;
+            let newY = gameState.playerY;
+            const speed = 0.15;
+            
+            if (keys['w'] || keys['W']) newY -= speed;
+            if (keys['s'] || keys['S']) newY += speed;
+            if (keys['a'] || keys['A']) newX -= speed;
+            if (keys['d'] || keys['D']) newX += speed;
+            
+            // Clamp to world bounds
+            newX = Math.max(0, Math.min(WORLD_WIDTH - 1, newX));
+            newY = Math.max(0, Math.min(WORLD_HEIGHT - 1, newY));
+            
+            // Check collision with solid blocks
+            const gridX = Math.floor(newX);
+            const gridY = Math.floor(newY);
+            
+            if (world[gridY] && world[gridY][gridX]) {
+                const blockType = blockTypes[world[gridY][gridX]];
+                
+                if (blockType.deadly) {
+                    // Lava kills player - respawn
+                    alert('💀 Du bist in der Lava gestorben! Versuch es nochmal!');
+                    gameState.playerX = 5;
+                    gameState.playerY = 5;
+                    return;
+                }
+                
+                if (!blockType.solid) {
+                    gameState.playerX = newX;
+                    gameState.playerY = newY;
+                }
+            }
+        }
+        
+        // Update enemies
+        function updateEnemies() {
+            enemies.forEach(enemy => {
+                if (!enemy.alive) return;
+                
+                // Simple AI: move toward player sometimes
+                if (Math.random() < 0.02) {
+                    const dx = gameState.playerX - enemy.x;
+                    const dy = gameState.playerY - enemy.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist > 0) {
+                        enemy.velocityX = (dx / dist) * 0.03;
+                        enemy.velocityY = (dy / dist) * 0.03;
+                    }
+                }
+                
+                // Move enemy
+                let newX = enemy.x + enemy.velocityX;
+                let newY = enemy.y + enemy.velocityY;
+                
+                // Clamp and check collision
+                newX = Math.max(0, Math.min(WORLD_WIDTH - 1, newX));
+                newY = Math.max(0, Math.min(WORLD_HEIGHT - 1, newY));
+                
+                const gridX = Math.floor(newX);
+                const gridY = Math.floor(newY);
+                
+                if (world[gridY] && world[gridY][gridX]) {
+                    const blockType = blockTypes[world[gridY][gridX]];
+                    
+                    if (blockType.deadly) {
+                        // Enemy died in lava
+                        enemy.alive = false;
+                        gameState.remainingEnemies--;
+                        return;
+                    }
+                    
+                    if (!blockType.solid) {
+                        enemy.x = newX;
+                        enemy.y = newY;
+                    } else {
+                        // Bounce off walls
+                        enemy.velocityX *= -1;
+                        enemy.velocityY *= -1;
+                    }
+                }
+                
+                // Friction
+                enemy.velocityX *= 0.98;
+                enemy.velocityY *= 0.98;
+                
+                // Check if touching player
+                const dx = enemy.x - gameState.playerX;
+                const dy = enemy.y - gameState.playerY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < 0.8) {
+                    alert('💀 Ein Gegner hat dich erwischt! Versuch es nochmal!');
+                    restartGame();
+                }
+            });
+        }
+        
+        // Update bullets
+        function updateBullets() {
+            bullets = bullets.filter(bullet => {
+                bullet.x += bullet.velocityX;
+                bullet.y += bullet.velocityY;
+                
+                // Check world bounds
+                const gridX = Math.floor(bullet.x / BLOCK_SIZE);
+                const gridY = Math.floor(bullet.y / BLOCK_SIZE);
+                
+                if (gridX < 0 || gridX >= WORLD_WIDTH || gridY < 0 || gridY >= WORLD_HEIGHT) {
+                    return false;
+                }
+                
+                // Check block collision
+                if (world[gridY] && world[gridY][gridX]) {
+                    const blockType = blockTypes[world[gridY][gridX]];
+                    if (blockType.solid) {
+                        return false;
+                    }
+                }
+                
+                // Check enemy collision
+                let hit = false;
+                enemies.forEach(enemy => {
+                    if (!enemy.alive) return;
+                    
+                    const dx = bullet.x / BLOCK_SIZE - enemy.x;
+                    const dy = bullet.y / BLOCK_SIZE - enemy.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < 0.5) {
+                        enemy.hp -= 50;
+                        if (enemy.hp <= 0) {
+                            enemy.alive = false;
+                            gameState.remainingEnemies--;
+                        }
+                        hit = true;
+                    }
+                });
+                
+                return !hit;
+            });
+        }
+        
+        // Shoot
+        function shoot(targetX, targetY) {
+            if (gameState.ammo <= 0 || gameState.mode !== 'shoot') return;
+            
+            const px = gameState.playerX * BLOCK_SIZE + BLOCK_SIZE / 2;
+            const py = gameState.playerY * BLOCK_SIZE + BLOCK_SIZE / 2;
+            
+            const dx = targetX - px;
+            const dy = targetY - py;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist > 0) {
+                const speed = 8;
+                bullets.push({
+                    x: px,
+                    y: py,
+                    velocityX: (dx / dist) * speed,
+                    velocityY: (dy / dist) * speed
+                });
+                
+                gameState.ammo--;
+            }
+        }
+        
+        // Build block
+        function buildBlock(targetX, targetY) {
+            if (gameState.blocks <= 0 || gameState.mode !== 'build') return;
+            
+            const gridX = Math.floor(targetX / BLOCK_SIZE);
+            const gridY = Math.floor(targetY / BLOCK_SIZE);
+            
+            if (gridX >= 0 && gridX < WORLD_WIDTH && gridY >= 0 && gridY < WORLD_HEIGHT) {
+                if (world[gridY][gridX] === 'air') {
+                    // Don't build on player position
+                    if (Math.abs(gridX - gameState.playerX) < 0.5 && Math.abs(gridY - gameState.playerY) < 0.5) {
+                        return;
+                    }
+                    
+                    world[gridY][gridX] = gameState.selectedBlockType;
+                    gameState.blocks--;
+                }
+            }
+        }
+        
+        // Mine block
+        function mineBlock(targetX, targetY) {
+            const gridX = Math.floor(targetX / BLOCK_SIZE);
+            const gridY = Math.floor(targetY / BLOCK_SIZE);
+            
+            if (gridX >= 0 && gridX < WORLD_WIDTH && gridY >= 0 && gridY < WORLD_HEIGHT) {
+                const blockType = world[gridY][gridX];
+                if (blockType !== 'air' && blockType !== 'lava') {
+                    world[gridY][gridX] = 'air';
+                    gameState.blocks++;
+                }
+            }
+        }
+        
+        // Toggle mode
+        function toggleMode() {
+            if (gameState.mode === 'shoot') {
+                gameState.mode = 'build';
+                document.getElementById('modeIndicator').innerHTML = 'MODUS: 🏗️ Bauen (Klick platziert)';
+            } else if (gameState.mode === 'build') {
+                gameState.mode = 'mine';
+                document.getElementById('modeIndicator').innerHTML = 'MODUS: ⛏️ Abbauen (Klick entfernt)';
+            } else {
+                gameState.mode = 'shoot';
+                document.getElementById('modeIndicator').innerHTML = 'MODUS: 🔫 Schießen';
+            }
+        }
+        
+        // Change block type
+        function changeBlockType(direction) {
+            const types = ['dirt', 'stone', 'wood'];
+            const currentIndex = types.indexOf(gameState.selectedBlockType);
+            let newIndex = currentIndex + direction;
+            
+            if (newIndex < 0) newIndex = types.length - 1;
+            if (newIndex >= types.length) newIndex = 0;
+            
+            gameState.selectedBlockType = types[newIndex];
+        }
+        
+        // Check win condition
+        function checkWin() {
+            if (gameState.remainingEnemies <= 0 && !gameState.gameWon) {
+                gameState.gameWon = true;
+                document.getElementById('winScreen').style.display = 'block';
+            }
+        }
+        
+        // Update UI
+        function updateUI() {
+            document.getElementById('ammo').textContent = gameState.ammo;
+            document.getElementById('enemies').textContent = gameState.remainingEnemies;
+            document.getElementById('blocks').textContent = gameState.blocks;
+        }
+        
+        // Game loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update
+            updatePlayer();
+            updateEnemies();
+            updateBullets();
+            checkWin();
+            
+            // Draw
+            drawWorld();
+            drawPlayer();
+            drawEnemies();
+            drawBullets();
+            
+            // Draw mode indicator on canvas
+            if (gameState.mode === 'build') {
+                ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+                const gridX = Math.floor(gameState.mouseX / BLOCK_SIZE);
+                const gridY = Math.floor(gameState.mouseY / BLOCK_SIZE);
+                ctx.fillRect(gridX * BLOCK_SIZE, gridY * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            } else if (gameState.mode === 'mine') {
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+                const gridX = Math.floor(gameState.mouseX / BLOCK_SIZE);
+                const gridY = Math.floor(gameState.mouseY / BLOCK_SIZE);
+                ctx.fillRect(gridX * BLOCK_SIZE, gridY * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            }
+            
+            // Update UI
+            updateUI();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Restart game
+        function restartGame() {
+            gameState.ammo = 150;
+            gameState.remainingEnemies = gameState.totalEnemies;
+            gameState.blocks = 50;
+            gameState.playerX = 5;
+            gameState.playerY = 5;
+            gameState.mode = 'shoot';
+            gameState.gameWon = false;
+            bullets = [];
+            
+            document.getElementById('winScreen').style.display = 'none';
+            document.getElementById('modeIndicator').innerHTML = 'MODUS: 🔫 Schießen';
+            
+            initWorld();
+            initEnemies();
+        }
+        
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            
+            if (e.key === ' ') {
+                e.preventDefault();
+                toggleMode();
+            }
+            
+            if (e.key === 'q' || e.key === 'Q') {
+                changeBlockType(-1);
+            }
+            
+            if (e.key === 'e' || e.key === 'E') {
+                changeBlockType(1);
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            gameState.mouseX = e.clientX - rect.left;
+            gameState.mouseY = e.clientY - rect.top;
+        });
+        
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            if (gameState.mode === 'shoot') {
+                shoot(mouseX, mouseY);
+            } else if (gameState.mode === 'build') {
+                buildBlock(mouseX, mouseY);
+            } else if (gameState.mode === 'mine') {
+                mineBlock(mouseX, mouseY);
+            }
+        });
+        
+        // Initialize and start
+        initWorld();
+        initEnemies();
+        gameLoop();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake.io - Multiplayer Snake</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        canvas {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: block;
+        }
+
+        #ui {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            color: white;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        #score {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ffd700;
+        }
+
+        #leaderboard {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            max-width: 250px;
+        }
+
+        .leaderboard-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .leaderboard-entry:last-child {
+            border-bottom: none;
+        }
+
+        .player-name {
+            font-weight: bold;
+            color: #4ade80;
+        }
+
+        #startScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 40px;
+            border-radius: 20px;
+            z-index: 100;
+        }
+
+        #startScreen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #ffd700;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+        }
+
+        #playerNameInput {
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            margin: 20px 0;
+            width: 300px;
+            text-align: center;
+        }
+
+        #startButton {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        #startButton:hover {
+            transform: scale(1.05);
+        }
+
+        #startButton:active {
+            transform: scale(0.95);
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            display: none;
+            z-index: 100;
+        }
+
+        #gameOver h2 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+        }
+
+        #finalScore {
+            font-size: 32px;
+            margin: 20px 0;
+            color: #ffd700;
+        }
+
+        #restartButton {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            margin-top: 20px;
+        }
+
+        #restartButton:hover {
+            transform: scale(1.05);
+        }
+
+        .instructions {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="ui">
+            <div id="score">Punkte: 0</div>
+            <div id="leaderboard">
+                <h3>Rangliste</h3>
+                <div id="leaderboardList"></div>
+            </div>
+        </div>
+
+        <div id="startScreen">
+            <h1>🐍 Snake.io</h1>
+            <p style="font-size: 20px; margin-bottom: 20px;">Werde zur längsten Schlange!</p>
+            <input type="text" id="playerNameInput" placeholder="Dein Name" maxlength="15" value="Spieler">
+            <br>
+            <button id="startButton">Spiel Starten</button>
+            <div class="instructions">
+                <p>🎮 Steuerung: Pfeiltasten oder WASD</p>
+                <p>🍎 Sammle Nahrung um zu wachsen</p>
+                <p>⚠️ Vermeide Kollisionen mit dir selbst und anderen!</p>
+            </div>
+        </div>
+
+        <div id="gameOver">
+            <h2>Game Over!</h2>
+            <div id="finalScore"></div>
+            <button id="restartButton">Nochmal Spielen</button>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = 1200;
+        canvas.height = 800;
+
+        // Spielvariablen
+        let gameRunning = false;
+        let playerName = "Spieler";
+        let score = 0;
+        let playerSnake;
+        let aiSnakes = [];
+        let food = [];
+        const FOOD_COUNT = 150;
+        const AI_COUNT = 5;  // Weniger Bots für besseres Gameplay
+        const GRID_SIZE = 10;
+
+        // Farben für Schlangen
+        const SNAKE_COLORS = [
+            { body: '#4ade80', head: '#22c55e' },
+            { body: '#60a5fa', head: '#3b82f6' },
+            { body: '#f472b6', head: '#ec4899' },
+            { body: '#fbbf24', head: '#f59e0b' },
+            { body: '#a78bfa', head: '#8b5cf6' },
+            { body: '#fb923c', head: '#f97316' },
+            { body: '#34d399', head: '#10b981' },
+            { body: '#f87171', head: '#ef4444' },
+            { body: '#38bdf8', head: '#0ea5e9' }
+        ];
+
+        // Snake Klasse
+        class Snake {
+            constructor(x, y, isPlayer = false, name = "Bot", colorIndex = 0) {
+                // Starte mit 8 Segmenten für eine sichtbare Länge
+                this.segments = [];
+                for (let i = 0; i < 8; i++) {
+                    this.segments.push({ x: x - i * 12, y: y });
+                }
+                this.direction = { x: 1, y: 0 };
+                this.nextDirection = { x: 1, y: 0 };
+                this.speed = 2.5;  // Etwas langsamer für bessere Kontrolle
+                this.isPlayer = isPlayer;
+                this.name = name;
+                this.color = SNAKE_COLORS[colorIndex % SNAKE_COLORS.length];
+                this.score = 10;
+                this.dead = false;
+                this.growth = 0;
+                // Schutzzeit am Anfang (in Frames)
+                this.invulnerable = isPlayer ? 90 : 0;  // 1.5 Sekunden Schutz für Spieler
+            }
+
+            update() {
+                if (this.dead) return;
+
+                // Verringere Schutzzeit
+                if (this.invulnerable > 0) {
+                    this.invulnerable--;
+                }
+
+                this.direction = this.nextDirection;
+
+                const head = this.segments[0];
+                const newHead = {
+                    x: head.x + this.direction.x * this.speed,
+                    y: head.y + this.direction.y * this.speed
+                };
+
+                // Wrap around edges
+                if (newHead.x < 0) newHead.x = canvas.width;
+                if (newHead.x > canvas.width) newHead.x = 0;
+                if (newHead.y < 0) newHead.y = canvas.height;
+                if (newHead.y > canvas.height) newHead.y = 0;
+
+                this.segments.unshift(newHead);
+
+                if (this.growth > 0) {
+                    this.growth--;
+                } else {
+                    this.segments.pop();
+                }
+            }
+
+            grow(amount = 5) {
+                this.growth += amount;
+                this.score += amount;
+            }
+
+            changeDirection(newDir) {
+                // Verhindere 180-Grad-Wendungen
+                if (this.direction.x + newDir.x !== 0 || this.direction.y + newDir.y !== 0) {
+                    this.nextDirection = newDir;
+                }
+            }
+
+            checkSelfCollision() {
+                // Überspringe mehr Segmente für fairere Kollisionserkennung
+                const minSegmentsToCheck = Math.min(15, this.segments.length);
+                const head = this.segments[0];
+                
+                for (let i = minSegmentsToCheck; i < this.segments.length; i++) {
+                    const segment = this.segments[i];
+                    const distance = Math.sqrt(
+                        Math.pow(head.x - segment.x, 2) + 
+                        Math.pow(head.y - segment.y, 2)
+                    );
+                    // Lockerere Kollisionserkennung
+                    if (distance < GRID_SIZE - 2) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            draw() {
+                if (this.dead) return;
+
+                // Wenn invulnerabel, blinke leicht
+                const isBlinking = this.invulnerable > 0 && Math.floor(this.invulnerable / 10) % 2 === 0;
+                const opacity = isBlinking ? 0.5 : 1;
+
+                // Zeichne Körper
+                for (let i = this.segments.length - 1; i > 0; i--) {
+                    const segment = this.segments[i];
+                    const size = GRID_SIZE - (i === this.segments.length - 1 ? 2 : 0);
+                    
+                    ctx.globalAlpha = opacity;
+                    ctx.fillStyle = this.color.body;
+                    ctx.beginPath();
+                    ctx.arc(segment.x, segment.y, size, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Glanz-Effekt
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(segment.x - 2, segment.y - 2, size * 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Zeichne Kopf
+                const head = this.segments[0];
+                ctx.fillStyle = this.color.head;
+                ctx.beginPath();
+                ctx.arc(head.x, head.y, GRID_SIZE + 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Schutzschild-Effekt wenn invulnerabel
+                if (this.invulnerable > 0) {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(head.x, head.y, GRID_SIZE + 6, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                // Glanz auf dem Kopf
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.beginPath();
+                ctx.arc(head.x - 3, head.y - 3, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.globalAlpha = 1;
+
+                // Augen
+                const eyeOffset = 4;
+                const angle = Math.atan2(this.direction.y, this.direction.x);
+                
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(
+                    head.x + Math.cos(angle + 0.5) * eyeOffset,
+                    head.y + Math.sin(angle + 0.5) * eyeOffset,
+                    3, 0, Math.PI * 2
+                );
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(
+                    head.x + Math.cos(angle - 0.5) * eyeOffset,
+                    head.y + Math.sin(angle - 0.5) * eyeOffset,
+                    3, 0, Math.PI * 2
+                );
+                ctx.fill();
+
+                // Pupillen
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(
+                    head.x + Math.cos(angle + 0.5) * eyeOffset + Math.cos(angle) * 1.5,
+                    head.y + Math.sin(angle + 0.5) * eyeOffset + Math.sin(angle) * 1.5,
+                    1.5, 0, Math.PI * 2
+                );
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(
+                    head.x + Math.cos(angle - 0.5) * eyeOffset + Math.cos(angle) * 1.5,
+                    head.y + Math.sin(angle - 0.5) * eyeOffset + Math.sin(angle) * 1.5,
+                    1.5, 0, Math.PI * 2
+                );
+                ctx.fill();
+
+                // Name über dem Kopf
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 3;
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.strokeText(this.name, head.x, head.y - 20);
+                ctx.fillText(this.name, head.x, head.y - 20);
+            }
+
+            aiMove() {
+                if (this.dead || this.isPlayer) return;
+
+                const head = this.segments[0];
+                let closestFood = null;
+                let minDist = Infinity;
+
+                // Finde nächste Nahrung
+                for (const f of food) {
+                    const dist = Math.sqrt(
+                        Math.pow(head.x - f.x, 2) + 
+                        Math.pow(head.y - f.y, 2)
+                    );
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closestFood = f;
+                    }
+                }
+
+                // AI bewegt sich nur alle paar Frames zur Nahrung (weniger aggressiv)
+                if (closestFood && Math.random() < 0.7) {
+                    const dx = closestFood.x - head.x;
+                    const dy = closestFood.y - head.y;
+
+                    // Wähle Richtung mit größerer Abweichung
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        this.changeDirection({
+                            x: dx > 0 ? 1 : -1,
+                            y: 0
+                        });
+                    } else {
+                        this.changeDirection({
+                            x: 0,
+                            y: dy > 0 ? 1 : -1
+                        });
+                    }
+                }
+
+                // Zufällige Richtungsänderung manchmal
+                if (Math.random() < 0.03) {
+                    const directions = [
+                        { x: 1, y: 0 },
+                        { x: -1, y: 0 },
+                        { x: 0, y: 1 },
+                        { x: 0, y: -1 }
+                    ];
+                    const randomDir = directions[Math.floor(Math.random() * directions.length)];
+                    this.changeDirection(randomDir);
+                }
+            }
+        }
+
+        // Food Klasse
+        class Food {
+            constructor() {
+                this.respawn();
+            }
+
+            respawn() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.radius = 5;
+                this.color = `hsl(${Math.random() * 360}, 70%, 60%)`;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Glanz
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.beginPath();
+                ctx.arc(this.x - 2, this.y - 2, this.radius * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Spielinitialisierung
+        function initGame() {
+            score = 0;
+            food = [];
+            aiSnakes = [];
+
+            // Erstelle Spielerschlange
+            const playerX = canvas.width / 2;
+            const playerY = canvas.height / 2;
+            playerSnake = new Snake(
+                playerX,
+                playerY,
+                true,
+                playerName,
+                0
+            );
+
+            // Erstelle AI-Schlangen mit Mindestabstand zum Spieler
+            const botNames = ["Bot Alpha", "Bot Beta", "Bot Gamma", "Bot Delta", 
+                             "Bot Epsilon", "Bot Zeta", "Bot Eta", "Bot Theta"];
+            const minDistanceFromPlayer = 250;  // Mindestabstand in Pixeln
+            
+            for (let i = 0; i < AI_COUNT; i++) {
+                let x, y, distance;
+                let attempts = 0;
+                
+                // Finde eine Position mit genügend Abstand zum Spieler
+                do {
+                    x = Math.random() * canvas.width;
+                    y = Math.random() * canvas.height;
+                    distance = Math.sqrt(
+                        Math.pow(x - playerX, 2) + 
+                        Math.pow(y - playerY, 2)
+                    );
+                    attempts++;
+                } while (distance < minDistanceFromPlayer && attempts < 50);
+                
+                aiSnakes.push(new Snake(x, y, false, botNames[i], i + 1));
+            }
+
+            // Erstelle Nahrung
+            for (let i = 0; i < FOOD_COUNT; i++) {
+                food.push(new Food());
+            }
+
+            gameRunning = true;
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameOver').style.display = 'none';
+        }
+
+        // Kollisionserkennung
+        function checkCollisions() {
+            const head = playerSnake.segments[0];
+
+            // Nahrung essen
+            for (let i = food.length - 1; i >= 0; i--) {
+                const f = food[i];
+                const distance = Math.sqrt(
+                    Math.pow(head.x - f.x, 2) + 
+                    Math.pow(head.y - f.y, 2)
+                );
+
+                if (distance < GRID_SIZE + f.radius) {
+                    playerSnake.grow();
+                    score += 10;
+                    food.splice(i, 1);
+                    food.push(new Food());
+                }
+            }
+
+            // AI-Schlangen essen Nahrung
+            for (const snake of aiSnakes) {
+                if (snake.dead) continue;
+                const aiHead = snake.segments[0];
+
+                for (let i = food.length - 1; i >= 0; i--) {
+                    const f = food[i];
+                    const distance = Math.sqrt(
+                        Math.pow(aiHead.x - f.x, 2) + 
+                        Math.pow(aiHead.y - f.y, 2)
+                    );
+
+                    if (distance < GRID_SIZE + f.radius) {
+                        snake.grow();
+                        food.splice(i, 1);
+                        food.push(new Food());
+                        break;
+                    }
+                }
+            }
+
+            // Selbstkollision prüfen (nur wenn nicht mehr geschützt)
+            if (playerSnake.invulnerable === 0 && playerSnake.checkSelfCollision()) {
+                gameOver();
+                return;
+            }
+
+            // Kollision mit AI-Schlangen (nur wenn nicht mehr geschützt)
+            if (playerSnake.invulnerable === 0) {
+                for (const snake of aiSnakes) {
+                    if (snake.dead) continue;
+
+                    // Überspringe die ersten Segmente der AI-Schlangen für fairere Kollision
+                    for (let i = 3; i < snake.segments.length; i++) {
+                        const segment = snake.segments[i];
+                        const distance = Math.sqrt(
+                            Math.pow(head.x - segment.x, 2) + 
+                            Math.pow(head.y - segment.y, 2)
+                        );
+
+                        // Weniger empfindliche Kollisionserkennung
+                        if (distance < GRID_SIZE * 1.2) {
+                            gameOver();
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Game Over
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = `Deine Punkte: ${score}`;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        // Rangliste aktualisieren
+        function updateLeaderboard() {
+            const allSnakes = [playerSnake, ...aiSnakes].filter(s => !s.dead);
+            allSnakes.sort((a, b) => b.score - a.score);
+
+            const leaderboardList = document.getElementById('leaderboardList');
+            leaderboardList.innerHTML = '';
+
+            for (let i = 0; i < Math.min(5, allSnakes.length); i++) {
+                const snake = allSnakes[i];
+                const entry = document.createElement('div');
+                entry.className = 'leaderboard-entry';
+                entry.innerHTML = `${i + 1}. <span class="player-name">${snake.name}</span>: ${snake.score}`;
+                leaderboardList.appendChild(entry);
+            }
+        }
+
+        // Spielschleife
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Zeichne Nahrung
+            for (const f of food) {
+                f.draw();
+            }
+
+            // Update und zeichne AI-Schlangen
+            for (const snake of aiSnakes) {
+                snake.aiMove();
+                snake.update();
+                snake.draw();
+            }
+
+            // Update und zeichne Spielerschlange
+            playerSnake.update();
+            playerSnake.draw();
+
+            checkCollisions();
+            updateLeaderboard();
+
+            document.getElementById('score').textContent = `Punkte: ${score}`;
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Steuerung
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+
+            switch(e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    playerSnake.changeDirection({ x: 0, y: -1 });
+                    e.preventDefault();
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    playerSnake.changeDirection({ x: 0, y: 1 });
+                    e.preventDefault();
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    playerSnake.changeDirection({ x: -1, y: 0 });
+                    e.preventDefault();
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    playerSnake.changeDirection({ x: 1, y: 0 });
+                    e.preventDefault();
+                    break;
+            }
+        });
+
+        // Start Button
+        document.getElementById('startButton').addEventListener('click', () => {
+            playerName = document.getElementById('playerNameInput').value || "Spieler";
+            initGame();
+            gameLoop();
+        });
+
+        // Restart Button
+        document.getElementById('restartButton').addEventListener('click', () => {
+            initGame();
+            gameLoop();
+        });
+
+        // Enter-Taste im Input-Feld
+        document.getElementById('playerNameInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('startButton').click();
+            }
+        });
+    </script>
+</body>
+</html>

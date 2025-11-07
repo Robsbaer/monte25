@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍔 Burger Lava Jump 🌋</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #FF6B6B 0%, #C92A2A 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+            font-size: 36px;
+        }
+
+        canvas {
+            border: 4px solid #333;
+            border-radius: 8px;
+            display: block;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 70%, #FF6B35 100%);
+        }
+
+        .info {
+            margin-top: 15px;
+            text-align: center;
+            color: white;
+            font-size: 18px;
+            display: flex;
+            justify-content: space-around;
+            gap: 30px;
+        }
+
+        .controls {
+            margin-top: 10px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .controls p {
+            margin: 5px 0;
+            color: #333;
+        }
+
+        .stat {
+            font-size: 20px;
+            font-weight: bold;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        .level {
+            color: #FFD700;
+        }
+
+        .lives {
+            color: #FF6B6B;
+        }
+
+        .goal {
+            color: #51CF66;
+        }
+
+        .enemies {
+            color: #FF3D00;
+        }
+    </style>
+</head>
+<body>
+    <h1>🍔 BURGER LAVA JUMP 🌋</h1>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="900" height="600"></canvas>
+        <div class="controls">
+            <p><strong>🎮 Steuerung:</strong></p>
+            <p>← → Pfeiltasten: Bewegen | Leertaste/↑: Springen | Strg: Schießen 🔫</p>
+            <p>⚠️ Berühre nicht die Lava! Erschieße die Gegner! Spring zum Ziel! 🎯</p>
+        </div>
+    </div>
+    <div class="info">
+        <div class="stat level">Level: <span id="level">1</span></div>
+        <div class="stat lives">Leben: <span id="lives">❤️❤️❤️</span></div>
+        <div class="stat enemies">Gegner: <span id="enemies">0</span></div>
+        <div class="stat goal">Ziel erreichen! 🚩</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const levelElement = document.getElementById('level');
+        const livesElement = document.getElementById('lives');
+        const enemiesElement = document.getElementById('enemies');
+
+        // Spiel-Zustand
+        let currentLevel = 1;
+        let lives = 3;
+        let gameRunning = true;
+        let levelComplete = false;
+        let gameOver = false;
+
+        // Spieler (Burger)
+        const player = {
+            x: 50,
+            y: 300,
+            width: 35,
+            height: 40,
+            velocityX: 0,
+            velocityY: 0,
+            speed: 6,
+            jumpPower: 14,
+            grounded: false,
+            canDoubleJump: false,
+            hasDoubleJumped: false
+        };
+
+        // Physik
+        const gravity = 0.5;
+        const friction = 0.85;
+
+        // Gegner und Schüsse
+        let enemies = [];
+        let bullets = [];
+
+        // Level-Definitionen
+        const levels = [
+            // Level 1 - Einfach
+            {
+                pillars: [
+                    { x: 50, y: 400, width: 70, height: 200 },
+                    { x: 200, y: 420, width: 60, height: 180 },
+                    { x: 350, y: 400, width: 65, height: 200 },
+                    { x: 500, y: 430, width: 60, height: 170 },
+                    { x: 650, y: 410, width: 70, height: 190 },
+                    { x: 800, y: 400, width: 80, height: 200 }
+                ],
+                goal: { x: 825, y: 350, width: 30, height: 50 },
+                enemies: [
+                    { pillarIndex: 2, direction: 1 },
+                    { pillarIndex: 4, direction: -1 }
+                ]
+            },
+            // Level 2 - Mittelschwer
+            {
+                pillars: [
+                    { x: 50, y: 450, width: 60, height: 150 },
+                    { x: 180, y: 480, width: 50, height: 120 },
+                    { x: 300, y: 440, width: 55, height: 160 },
+                    { x: 430, y: 500, width: 45, height: 100 },
+                    { x: 550, y: 460, width: 50, height: 140 },
+                    { x: 680, y: 420, width: 60, height: 180 },
+                    { x: 820, y: 450, width: 60, height: 150 }
+                ],
+                goal: { x: 840, y: 400, width: 30, height: 50 },
+                enemies: [
+                    { pillarIndex: 1, direction: 1 },
+                    { pillarIndex: 3, direction: -1 },
+                    { pillarIndex: 5, direction: 1 }
+                ]
+            },
+            // Level 3 - Schwer
+            {
+                pillars: [
+                    { x: 50, y: 480, width: 55, height: 120 },
+                    { x: 150, y: 520, width: 45, height: 80 },
+                    { x: 250, y: 490, width: 50, height: 110 },
+                    { x: 360, y: 530, width: 40, height: 70 },
+                    { x: 470, y: 500, width: 45, height: 100 },
+                    { x: 580, y: 540, width: 40, height: 60 },
+                    { x: 690, y: 510, width: 45, height: 90 },
+                    { x: 800, y: 480, width: 50, height: 120 }
+                ],
+                goal: { x: 815, y: 430, width: 30, height: 50 },
+                enemies: [
+                    { pillarIndex: 1, direction: 1 },
+                    { pillarIndex: 3, direction: -1 },
+                    { pillarIndex: 5, direction: 1 },
+                    { pillarIndex: 6, direction: -1 }
+                ]
+            },
+            // Level 4 - Sehr schwer
+            {
+                pillars: [
+                    { x: 50, y: 500, width: 50, height: 100 },
+                    { x: 140, y: 540, width: 40, height: 60 },
+                    { x: 230, y: 520, width: 45, height: 80 },
+                    { x: 320, y: 550, width: 35, height: 50 },
+                    { x: 410, y: 530, width: 40, height: 70 },
+                    { x: 500, y: 555, width: 35, height: 45 },
+                    { x: 590, y: 535, width: 40, height: 65 },
+                    { x: 680, y: 520, width: 45, height: 80 },
+                    { x: 775, y: 500, width: 50, height: 100 }
+                ],
+                goal: { x: 790, y: 450, width: 30, height: 50 },
+                enemies: [
+                    { pillarIndex: 1, direction: 1 },
+                    { pillarIndex: 2, direction: -1 },
+                    { pillarIndex: 4, direction: 1 },
+                    { pillarIndex: 6, direction: -1 },
+                    { pillarIndex: 7, direction: 1 }
+                ]
+            },
+            // Level 5 - Extrem schwer
+            {
+                pillars: [
+                    { x: 50, y: 520, width: 45, height: 80 },
+                    { x: 130, y: 560, width: 35, height: 40 },
+                    { x: 210, y: 545, width: 38, height: 55 },
+                    { x: 290, y: 565, width: 32, height: 35 },
+                    { x: 370, y: 550, width: 35, height: 50 },
+                    { x: 450, y: 570, width: 30, height: 30 },
+                    { x: 530, y: 555, width: 35, height: 45 },
+                    { x: 610, y: 540, width: 38, height: 60 },
+                    { x: 690, y: 560, width: 32, height: 40 },
+                    { x: 770, y: 530, width: 40, height: 70 },
+                    { x: 850, y: 520, width: 45, height: 80 }
+                ],
+                goal: { x: 865, y: 470, width: 30, height: 50 },
+                enemies: [
+                    { pillarIndex: 1, direction: 1 },
+                    { pillarIndex: 2, direction: -1 },
+                    { pillarIndex: 4, direction: 1 },
+                    { pillarIndex: 5, direction: -1 },
+                    { pillarIndex: 7, direction: 1 },
+                    { pillarIndex: 9, direction: -1 }
+                ]
+            }
+        ];
+
+        let currentPillars = [];
+        let currentGoal = {};
+
+        // Level initialisieren
+        function initLevel() {
+            if (currentLevel > levels.length) {
+                // Alle Levels geschafft!
+                gameOver = true;
+                gameRunning = false;
+                return;
+            }
+
+            const level = levels[currentLevel - 1];
+            currentPillars = JSON.parse(JSON.stringify(level.pillars));
+            currentGoal = JSON.parse(JSON.stringify(level.goal));
+            
+            // Gegner initialisieren
+            enemies = [];
+            bullets = [];
+            if (level.enemies) {
+                level.enemies.forEach(enemyDef => {
+                    const pillar = currentPillars[enemyDef.pillarIndex];
+                    if (pillar) {
+                        enemies.push({
+                            x: pillar.x + pillar.width / 2,
+                            y: pillar.y - 35,
+                            width: 30,
+                            height: 30,
+                            pillarIndex: enemyDef.pillarIndex,
+                            direction: enemyDef.direction,
+                            speed: 1.5
+                        });
+                    }
+                });
+            }
+            updateEnemiesDisplay();
+            
+            // Spieler zurücksetzen
+            player.x = 60;
+            player.y = 200;
+            player.velocityX = 0;
+            player.velocityY = 0;
+            player.grounded = false;
+            player.hasDoubleJumped = false;
+            
+            levelComplete = false;
+            levelElement.textContent = currentLevel;
+        }
+
+        // Tastatur-Eingabe
+        const keys = {
+            left: false,
+            right: false,
+            up: false,
+            space: false,
+            ctrl: false
+        };
+
+        let spacePressed = false;
+        let ctrlPressed = false;
+        let lastDirection = 1; // 1 = rechts, -1 = links
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+            if (e.key === 'ArrowUp' || e.key === 'w') keys.up = true;
+            if (e.key === ' ') {
+                if (!spacePressed) {
+                    keys.space = true;
+                    spacePressed = true;
+                }
+                e.preventDefault();
+            }
+            // Strg zum Schießen
+            if (e.key === 'Control') {
+                if (!ctrlPressed) {
+                    keys.ctrl = true;
+                    ctrlPressed = true;
+                    shoot();
+                }
+                e.preventDefault();
+            }
+            // R zum Neustarten
+            if (e.key === 'r' || e.key === 'R') {
+                if (gameOver || !gameRunning) {
+                    resetGame();
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+            if (e.key === 'ArrowUp' || e.key === 'w') keys.up = false;
+            if (e.key === ' ') {
+                keys.space = false;
+                spacePressed = false;
+            }
+            if (e.key === 'Control') {
+                keys.ctrl = false;
+                ctrlPressed = false;
+            }
+        });
+
+        // Burger zeichnen
+        function drawBurger(x, y, width, height) {
+            const cx = x + width / 2;
+            const cy = y + height / 2;
+
+            // Oberes Brötchen
+            ctx.fillStyle = '#D4A574';
+            ctx.beginPath();
+            ctx.ellipse(cx, y + 8, width / 2, 8, 0, Math.PI, 0);
+            ctx.fill();
+            
+            // Sesam auf oberem Brötchen
+            ctx.fillStyle = '#F5DEB3';
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                ctx.arc(x + 8 + i * 5, y + 7, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Salat
+            ctx.fillStyle = '#51CF66';
+            ctx.fillRect(x + 3, y + 12, width - 6, 5);
+
+            // Fleisch (Patty)
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(x + 2, y + 17, width - 4, 8);
+
+            // Käse
+            ctx.fillStyle = '#FFD43B';
+            ctx.fillRect(x + 3, y + 25, width - 6, 4);
+
+            // Unteres Brötchen
+            ctx.fillStyle = '#D4A574';
+            ctx.fillRect(x + 2, y + 29, width - 4, 10);
+            
+            // Augen
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(x + 10, y + 20, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(x + 25, y + 20, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Säulen zeichnen
+        function drawPillars() {
+            currentPillars.forEach((pillar, index) => {
+                // Säule selbst
+                const gradient = ctx.createLinearGradient(pillar.x, 0, pillar.x + pillar.width, 0);
+                gradient.addColorStop(0, '#6C757D');
+                gradient.addColorStop(0.5, '#ADB5BD');
+                gradient.addColorStop(1, '#6C757D');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(pillar.x, pillar.y, pillar.width, pillar.height);
+
+                // Schatten/Tiefe
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillRect(pillar.x + pillar.width - 5, pillar.y, 5, pillar.height);
+
+                // Oberseite (Plattform)
+                ctx.fillStyle = '#495057';
+                ctx.fillRect(pillar.x - 2, pillar.y - 3, pillar.width + 4, 3);
+            });
+        }
+
+        // Ziel zeichnen
+        function drawGoal() {
+            const time = Date.now() / 500;
+            const offset = Math.sin(time) * 3;
+
+            // Flaggenmast
+            ctx.fillStyle = '#495057';
+            ctx.fillRect(currentGoal.x + 10, currentGoal.y - 30 + offset, 3, 80);
+
+            // Flagge
+            ctx.fillStyle = '#51CF66';
+            ctx.beginPath();
+            ctx.moveTo(currentGoal.x + 13, currentGoal.y - 25 + offset);
+            ctx.lineTo(currentGoal.x + 38, currentGoal.y - 15 + offset);
+            ctx.lineTo(currentGoal.x + 13, currentGoal.y - 5 + offset);
+            ctx.closePath();
+            ctx.fill();
+
+            // Stern auf Flagge
+            ctx.fillStyle = '#FFD43B';
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText('★', currentGoal.x + 20, currentGoal.y - 10 + offset);
+        }
+
+        // Gegner zeichnen
+        function drawEnemy(enemy) {
+            // Körper
+            ctx.fillStyle = '#C92A2A';
+            ctx.fillRect(enemy.x - enemy.width/2, enemy.y, enemy.width, enemy.height);
+            
+            // Augen
+            ctx.fillStyle = '#FFD43B';
+            ctx.beginPath();
+            ctx.arc(enemy.x - 7, enemy.y + 10, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(enemy.x + 7, enemy.y + 10, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Böse Pupillen
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(enemy.x - 7, enemy.y + 10, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(enemy.x + 7, enemy.y + 10, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Mund (böse)
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(enemy.x, enemy.y + 20, 8, 0.2, Math.PI - 0.2);
+            ctx.stroke();
+        }
+
+        // Schuss zeichnen
+        function drawBullet(bullet) {
+            ctx.fillStyle = '#FFD43B';
+            ctx.beginPath();
+            ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Leuchteffekt
+            ctx.fillStyle = 'rgba(255, 212, 59, 0.3)';
+            ctx.beginPath();
+            ctx.arc(bullet.x, bullet.y, bullet.radius + 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Schuss abfeuern
+        function shoot() {
+            if (!gameRunning || levelComplete) return;
+            
+            bullets.push({
+                x: player.x + (lastDirection > 0 ? player.width : 0),
+                y: player.y + player.height / 2,
+                radius: 5,
+                speed: 10,
+                direction: lastDirection
+            });
+        }
+
+        // Gegner aktualisieren
+        function updateEnemies() {
+            enemies.forEach(enemy => {
+                const pillar = currentPillars[enemy.pillarIndex];
+                if (!pillar) return;
+                
+                // Bewegen
+                enemy.x += enemy.direction * enemy.speed;
+                
+                // An Säulenrand umkehren
+                if (enemy.x - enemy.width/2 < pillar.x || 
+                    enemy.x + enemy.width/2 > pillar.x + pillar.width) {
+                    enemy.direction *= -1;
+                }
+                
+                // Kollision mit Spieler
+                if (checkCollision(player, {
+                    x: enemy.x - enemy.width/2,
+                    y: enemy.y,
+                    width: enemy.width,
+                    height: enemy.height
+                })) {
+                    lives--;
+                    updateLivesDisplay();
+                    
+                    if (lives <= 0) {
+                        gameOver = true;
+                        gameRunning = false;
+                    } else {
+                        // Spieler zurücksetzen
+                        player.x = 60;
+                        player.y = 200;
+                        player.velocityX = 0;
+                        player.velocityY = 0;
+                    }
+                }
+            });
+        }
+
+        // Schüsse aktualisieren
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.x += bullet.direction * bullet.speed;
+                
+                // Aus dem Bildschirm entfernt
+                if (bullet.x < 0 || bullet.x > canvas.width) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                
+                // Kollision mit Gegnern
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    const distance = Math.sqrt(
+                        Math.pow(bullet.x - enemy.x, 2) + 
+                        Math.pow(bullet.y - (enemy.y + enemy.height/2), 2)
+                    );
+                    
+                    if (distance < bullet.radius + enemy.width/2) {
+                        // Treffer!
+                        enemies.splice(j, 1);
+                        bullets.splice(i, 1);
+                        updateEnemiesDisplay();
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Gegner-Anzeige aktualisieren
+        function updateEnemiesDisplay() {
+            enemiesElement.textContent = enemies.length;
+        }
+
+        // Lava zeichnen
+        function drawLava() {
+            const lavaHeight = 40;
+            const lavaY = canvas.height - lavaHeight;
+            const time = Date.now() / 200;
+
+            // Lava-Gradient
+            const gradient = ctx.createLinearGradient(0, lavaY, 0, canvas.height);
+            gradient.addColorStop(0, '#FF6B35');
+            gradient.addColorStop(0.5, '#FF3D00');
+            gradient.addColorStop(1, '#C92A2A');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, lavaY, canvas.width, lavaHeight);
+
+            // Lava-Wellen
+            ctx.fillStyle = '#FF8C00';
+            ctx.beginPath();
+            for (let x = 0; x <= canvas.width; x += 20) {
+                const y = lavaY + Math.sin((x + time * 50) / 30) * 3;
+                if (x === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.lineTo(canvas.width, canvas.height);
+            ctx.lineTo(0, canvas.height);
+            ctx.closePath();
+            ctx.fill();
+
+            // Lava-Blasen
+            for (let i = 0; i < 5; i++) {
+                const bubbleX = (time * 30 + i * 180) % canvas.width;
+                const bubbleY = lavaY + 10 + Math.sin(time + i) * 5;
+                ctx.fillStyle = 'rgba(255, 150, 0, 0.5)';
+                ctx.beginPath();
+                ctx.arc(bubbleX, bubbleY, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Kollisionserkennung
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+
+        // Spieler-Physik aktualisieren
+        function updatePlayer() {
+            // Horizontale Bewegung
+            if (keys.left) {
+                player.velocityX = -player.speed;
+                lastDirection = -1;
+            } else if (keys.right) {
+                player.velocityX = player.speed;
+                lastDirection = 1;
+            } else {
+                player.velocityX *= friction;
+            }
+
+            // Springen
+            if ((keys.up || keys.space) && player.grounded) {
+                player.velocityY = -player.jumpPower;
+                player.grounded = false;
+                player.hasDoubleJumped = false;
+                keys.space = false;
+            }
+
+            // Schwerkraft anwenden
+            player.velocityY += gravity;
+
+            // Terminal velocity
+            if (player.velocityY > 15) player.velocityY = 15;
+
+            // Position aktualisieren
+            player.x += player.velocityX;
+            player.y += player.velocityY;
+
+            // Bildschirm-Grenzen
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) {
+                player.x = canvas.width - player.width;
+            }
+
+            // Säulen-Kollision
+            player.grounded = false;
+            currentPillars.forEach(pillar => {
+                if (checkCollision(player, pillar)) {
+                    // Von oben auf Säule landen
+                    if (player.velocityY > 0 && 
+                        player.y + player.height - player.velocityY <= pillar.y) {
+                        player.y = pillar.y - player.height;
+                        player.velocityY = 0;
+                        player.grounded = true;
+                        player.hasDoubleJumped = false;
+                    }
+                    // Kopf stößt an Säule
+                    else if (player.velocityY < 0 && 
+                             player.y - player.velocityY >= pillar.y + pillar.height) {
+                        player.y = pillar.y + pillar.height;
+                        player.velocityY = 0;
+                    }
+                    // Seitliche Kollision
+                    else {
+                        if (player.velocityX > 0) {
+                            player.x = pillar.x - player.width;
+                        } else if (player.velocityX < 0) {
+                            player.x = pillar.x + pillar.width;
+                        }
+                        player.velocityX = 0;
+                    }
+                }
+            });
+
+            // In Lava gefallen
+            if (player.y + player.height > canvas.height - 40) {
+                lives--;
+                updateLivesDisplay();
+                
+                if (lives <= 0) {
+                    gameOver = true;
+                    gameRunning = false;
+                } else {
+                    // Spieler zurücksetzen
+                    player.x = 60;
+                    player.y = 200;
+                    player.velocityX = 0;
+                    player.velocityY = 0;
+                }
+            }
+
+            // Ziel erreicht
+            if (checkCollision(player, currentGoal)) {
+                levelComplete = true;
+            }
+        }
+
+        // Leben-Anzeige aktualisieren
+        function updateLivesDisplay() {
+            let heartsDisplay = '';
+            for (let i = 0; i < lives; i++) {
+                heartsDisplay += '❤️';
+            }
+            livesElement.textContent = heartsDisplay || '💀';
+        }
+
+        // Hintergrund zeichnen
+        function drawBackground() {
+            // Himmel-Gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height - 100);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.7, '#E0F6FF');
+            gradient.addColorStop(1, '#FFB6B9');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height - 100);
+        }
+
+        // Level-Complete-Nachricht
+        function drawLevelComplete() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#51CF66';
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('🎉 LEVEL GESCHAFFT! 🎉', canvas.width / 2, canvas.height / 2 - 40);
+            
+            ctx.fillStyle = '#FFD43B';
+            ctx.font = 'bold 28px Arial';
+            ctx.fillText('Drücke LEERTASTE für nächstes Level', canvas.width / 2, canvas.height / 2 + 20);
+        }
+
+        // Game-Over-Nachricht
+        function drawGameOver() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (currentLevel > levels.length) {
+                // Alle Levels geschafft
+                ctx.fillStyle = '#FFD43B';
+                ctx.font = 'bold 56px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('🏆 GLÜCKWUNSCH! 🏆', canvas.width / 2, canvas.height / 2 - 60);
+                
+                ctx.fillStyle = '#51CF66';
+                ctx.font = 'bold 32px Arial';
+                ctx.fillText('Alle Levels gemeistert!', canvas.width / 2, canvas.height / 2);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 24px Arial';
+                ctx.fillText('Du bist ein echter Burger-Champion! 🍔', canvas.width / 2, canvas.height / 2 + 50);
+                ctx.fillText('Drücke R zum Neustarten', canvas.width / 2, canvas.height / 2 + 90);
+            } else {
+                // Game Over durch Leben verloren
+                ctx.fillStyle = '#FF6B6B';
+                ctx.font = 'bold 56px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('💀 GAME OVER 💀', canvas.width / 2, canvas.height / 2 - 40);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 28px Arial';
+                ctx.fillText('In die Lava gefallen!', canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillText('Drücke R zum Neustarten', canvas.width / 2, canvas.height / 2 + 50);
+            }
+        }
+
+        // Spiel zurücksetzen
+        function resetGame() {
+            currentLevel = 1;
+            lives = 3;
+            gameRunning = true;
+            gameOver = false;
+            levelComplete = false;
+            updateLivesDisplay();
+            initLevel();
+        }
+
+        // Spiel-Loop
+        function gameLoop() {
+            // Canvas leeren
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Hintergrund
+            drawBackground();
+            
+            // Lava
+            drawLava();
+            
+            // Säulen
+            drawPillars();
+            
+            // Ziel
+            drawGoal();
+            
+            // Gegner
+            enemies.forEach(enemy => drawEnemy(enemy));
+            
+            // Schüsse
+            bullets.forEach(bullet => drawBullet(bullet));
+            
+            // Spieler
+            drawBurger(player.x, player.y, player.width, player.height);
+
+            if (!levelComplete && !gameOver) {
+                // Spieler aktualisieren
+                updatePlayer();
+                
+                // Gegner aktualisieren
+                updateEnemies();
+                
+                // Schüsse aktualisieren
+                updateBullets();
+            } else if (levelComplete) {
+                drawLevelComplete();
+                
+                // Warten auf Leertaste für nächstes Level
+                if (keys.space) {
+                    currentLevel++;
+                    keys.space = false;
+                    spacePressed = false;
+                    initLevel();
+                    
+                    // Prüfen ob alle Levels geschafft
+                    if (currentLevel > levels.length) {
+                        gameOver = true;
+                        gameRunning = false;
+                    }
+                }
+            } else if (gameOver) {
+                drawGameOver();
+            }
+
+            if (gameRunning || gameOver) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Spiel initialisieren und starten
+        initLevel();
+        updateLivesDisplay();
+        gameLoop();
+    </script>
+</body>
+</html>

@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Steal a Brainrot - Sammel Edition</title>
+  </head>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+    <script>
+      // Spielzustand
+      let money = 50;
+      let totalMoney = 0;
+      let clickPower = 1;
+      let passiveIncome = 0;
+      
+      // Brainrot-Charaktere
+      let myBrainrots = [];
+      let enemyBrainrots = [];
+      
+      // UI-Elemente
+      let shopOpen = false;
+      let stealMode = false;
+      let stealCooldown = 0;
+      let maxStealCooldown = 180; // 3 Sekunden
+      
+      // Animationen
+      let particles = [];
+      let floatingTexts = [];
+      let shakeOffset = 0;
+      
+      // Brainrot-Typen mit verschiedenen Seltenheiten
+      const brainrotTypes = [
+        { name: "Skibidi", rarity: "common", price: 50, income: 1, color: [100, 149, 237], emoji: "🚽" },
+        { name: "Sigma", rarity: "common", price: 100, income: 2, color: [255, 99, 71], emoji: "😎" },
+        { name: "Rizz", rarity: "uncommon", price: 250, income: 5, color: [255, 215, 0], emoji: "✨" },
+        { name: "Gyat", rarity: "uncommon", price: 500, income: 10, color: [255, 105, 180], emoji: "🍑" },
+        { name: "Fanum Tax", rarity: "rare", price: 1000, income: 25, color: [147, 112, 219], emoji: "💰" },
+        { name: "Ohio", rarity: "rare", price: 2500, income: 60, color: [34, 139, 34], emoji: "🌽" },
+        { name: "Grimace", rarity: "epic", price: 5000, income: 150, color: [138, 43, 226], emoji: "😈" },
+        { name: "Gojo", rarity: "epic", price: 10000, income: 350, color: [0, 191, 255], emoji: "👁️" },
+        { name: "Alpha", rarity: "legendary", price: 25000, income: 900, color: [255, 69, 0], emoji: "🐺" },
+        { name: "Gigachad", rarity: "legendary", price: 50000, income: 2000, color: [220, 20, 60], emoji: "💪" }
+      ];
+      
+      // Audio Context für Sounds
+      let audioContext;
+      
+      function setup() {
+        createCanvas(1200, 700);
+        textFont('Arial');
+        
+        // Audio Context initialisieren
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Starte mit ein paar Enemy Brainrots
+        for (let i = 0; i < 8; i++) {
+          spawnEnemyBrainrot();
+        }
+        
+        // Passives Einkommen alle 60 Frames (1 Sekunde)
+        setInterval(() => {
+          if (passiveIncome > 0) {
+            money += passiveIncome;
+            totalMoney += passiveIncome;
+          }
+        }, 1000);
+      }
+      
+      function draw() {
+        // Hintergrund
+        background(20, 20, 30);
+        
+        // Sternen-Hintergrund
+        drawStars();
+        
+        // Cooldowns updaten
+        if (stealCooldown > 0) stealCooldown--;
+        
+        // Shake-Effekt
+        shakeOffset *= 0.9;
+        
+        // Partikel updaten
+        updateParticles();
+        
+        // Floating Texts updaten
+        updateFloatingTexts();
+        
+        // Enemy-Bereich (oben)
+        drawEnemyArea();
+        
+        // Trennlinie
+        stroke(100, 100, 150);
+        strokeWeight(3);
+        line(0, 350, width, 350);
+        
+        // Meine Brainrots (unten)
+        drawMyArea();
+        
+        // UI-Overlay
+        drawUI();
+        
+        // Shop-Fenster
+        if (shopOpen) {
+          drawShop();
+        }
+      }
+      
+      function drawStars() {
+        noStroke();
+        fill(255, 255, 255, 150);
+        for (let i = 0; i < 50; i++) {
+          let x = (i * 137.5) % width; // Pseudo-random
+          let y = (i * 234.7) % height;
+          let size = (i % 3) + 1;
+          circle(x, y, size);
+        }
+      }
+      
+      function drawEnemyArea() {
+        // Hintergrund
+        fill(40, 20, 20, 100);
+        noStroke();
+        rect(0, 0, width, 350);
+        
+        // Titel
+        fill(255, 100, 100);
+        textSize(28);
+        textAlign(LEFT);
+        textStyle(BOLD);
+        text("👾 FEINDLICHE BRAINROTS", 20, 35);
+        
+        textStyle(NORMAL);
+        textSize(18);
+        fill(255, 200, 200);
+        if (stealCooldown > 0) {
+          text(`Steal Cooldown: ${(stealCooldown / 60).toFixed(1)}s`, 20, 65);
+        } else if (stealMode) {
+          text("🎯 STEAL MODE AKTIV - Klicke auf ein Brainrot!", 20, 65);
+        } else {
+          text("Drücke SPACE um Steal Mode zu aktivieren", 20, 65);
+        }
+        
+        // Zeichne Enemy Brainrots
+        for (let i = 0; i < enemyBrainrots.length; i++) {
+          let brainrot = enemyBrainrots[i];
+          let col = i % 6;
+          let row = floor(i / 6);
+          brainrot.x = 100 + col * 180;
+          brainrot.y = 120 + row * 140;
+          
+          drawBrainrot(brainrot, brainrot.x, brainrot.y, false);
+        }
+      }
+      
+      function drawMyArea() {
+        // Hintergrund
+        fill(20, 40, 20, 100);
+        noStroke();
+        rect(0, 350, width, 350);
+        
+        // Titel
+        fill(100, 255, 100);
+        textSize(28);
+        textAlign(LEFT);
+        textStyle(BOLD);
+        text("💚 MEINE BRAINROTS", 20, 385);
+        
+        textStyle(NORMAL);
+        textSize(18);
+        fill(200, 255, 200);
+        text(`Passives Einkommen: ${passiveIncome}$/s`, 20, 415);
+        
+        // Zeichne meine Brainrots
+        if (myBrainrots.length === 0) {
+          fill(150, 150, 150);
+          textSize(20);
+          textAlign(CENTER);
+          text("Kaufe dein erstes Brainrot im Shop! (Drücke S)", width/2, 500);
+        } else {
+          for (let i = 0; i < myBrainrots.length; i++) {
+            let brainrot = myBrainrots[i];
+            let col = i % 6;
+            let row = floor(i / 6);
+            brainrot.x = 100 + col * 180;
+            brainrot.y = 470 + row * 140;
+            
+            drawBrainrot(brainrot, brainrot.x, brainrot.y, true);
+          }
+        }
+      }
+      
+      function drawBrainrot(brainrot, x, y, isMine) {
+        push();
+        translate(x, y);
+        
+        // Hover-Effekt
+        let d = dist(mouseX, mouseY, x, y);
+        let hovered = d < 50;
+        
+        if (hovered) {
+          scale(1.1);
+        }
+        
+        // Seltenheits-Glühen
+        let glowColor = brainrot.type.color;
+        noStroke();
+        fill(glowColor[0], glowColor[1], glowColor[2], 50);
+        circle(0, 0, 110);
+        
+        // Körper
+        fill(glowColor[0], glowColor[1], glowColor[2]);
+        stroke(0);
+        strokeWeight(3);
+        circle(0, 0, 80);
+        
+        // Emoji
+        textSize(40);
+        textAlign(CENTER, CENTER);
+        noStroke();
+        text(brainrot.type.emoji, 0, -5);
+        
+        // Level-Badge
+        if (brainrot.level > 1) {
+          fill(255, 215, 0);
+          stroke(0);
+          strokeWeight(2);
+          circle(25, -25, 30);
+          fill(0);
+          noStroke();
+          textSize(16);
+          textStyle(BOLD);
+          text(brainrot.level, 25, -25);
+          textStyle(NORMAL);
+        }
+        
+        // Name und Income
+        fill(255);
+        noStroke();
+        textSize(14);
+        textStyle(BOLD);
+        text(brainrot.type.name, 0, 50);
+        textStyle(NORMAL);
+        textSize(12);
+        if (isMine) {
+          let income = brainrot.type.income * brainrot.level;
+          fill(100, 255, 100);
+          text(`+${income}$/s`, 0, 67);
+        }
+        
+        // Rarity
+        let rarityColor = getRarityColor(brainrot.type.rarity);
+        fill(rarityColor);
+        textSize(11);
+        text(brainrot.type.rarity.toUpperCase(), 0, 82);
+        
+        pop();
+      }
+      
+      function getRarityColor(rarity) {
+        switch(rarity) {
+          case "common": return color(150, 150, 150);
+          case "uncommon": return color(100, 255, 100);
+          case "rare": return color(100, 150, 255);
+          case "epic": return color(200, 100, 255);
+          case "legendary": return color(255, 150, 50);
+          default: return color(255);
+        }
+      }
+      
+      function drawUI() {
+        // Top-Bar
+        fill(0, 0, 0, 200);
+        noStroke();
+        rect(0, 0, width, 80);
+        
+        // Geld-Anzeige
+        fill(255, 215, 0);
+        textSize(36);
+        textAlign(LEFT);
+        textStyle(BOLD);
+        text(`💰 ${Math.floor(money)}$`, 20, 52);
+        
+        textStyle(NORMAL);
+        textSize(16);
+        fill(200, 200, 200);
+        text(`Verdient: ${Math.floor(totalMoney)}$`, 20, 73);
+        
+        // Buttons
+        drawButton(width - 320, 15, 140, 50, "SHOP (S)", shopOpen ? color(100, 200, 100) : color(100, 100, 200));
+        
+        let stealColor = stealCooldown > 0 ? color(100, 100, 100) : (stealMode ? color(255, 100, 100) : color(200, 100, 200));
+        drawButton(width - 160, 15, 140, 50, "STEAL", stealColor);
+      }
+      
+      function drawButton(x, y, w, h, label, col) {
+        push();
+        
+        // Shadow
+        fill(0, 0, 0, 100);
+        noStroke();
+        rect(x + 3, y + 3, w, h, 10);
+        
+        // Button
+        fill(col);
+        stroke(255);
+        strokeWeight(2);
+        rect(x, y, w, h, 10);
+        
+        // Label
+        fill(255);
+        noStroke();
+        textSize(18);
+        textAlign(CENTER, CENTER);
+        textStyle(BOLD);
+        text(label, x + w/2, y + h/2);
+        textStyle(NORMAL);
+        
+        pop();
+      }
+      
+      function drawShop() {
+        // Overlay
+        fill(0, 0, 0, 200);
+        noStroke();
+        rect(0, 0, width, height);
+        
+        // Shop-Fenster
+        fill(30, 30, 50);
+        stroke(100, 100, 200);
+        strokeWeight(4);
+        rect(150, 80, width - 300, height - 160, 20);
+        
+        // Titel
+        fill(100, 200, 255);
+        noStroke();
+        textSize(40);
+        textAlign(CENTER);
+        textStyle(BOLD);
+        text("🛒 BRAINROT SHOP", width/2, 140);
+        
+        textStyle(NORMAL);
+        textSize(18);
+        fill(200, 200, 200);
+        text("Kaufe Brainrots für passives Einkommen!", width/2, 175);
+        
+        // Shop-Items
+        let startX = 220;
+        let startY = 220;
+        let spacing = 170;
+        
+        for (let i = 0; i < brainrotTypes.length; i++) {
+          let type = brainrotTypes[i];
+          let col = i % 6;
+          let row = floor(i / 6);
+          let x = startX + col * spacing;
+          let y = startY + row * 220;
+          
+          drawShopItem(type, x, y);
+        }
+        
+        // Close-Button
+        drawButton(width/2 - 100, height - 100, 200, 50, "SCHLIESSEN (S)", color(200, 50, 50));
+      }
+      
+      function drawShopItem(type, x, y) {
+        push();
+        
+        let canAfford = money >= type.price;
+        
+        // Item-Karte
+        if (canAfford) {
+          fill(50, 50, 80);
+        } else {
+          fill(40, 40, 40);
+        }
+        stroke(type.color[0], type.color[1], type.color[2]);
+        strokeWeight(3);
+        rect(x - 70, y - 70, 140, 180, 10);
+        
+        // Emoji
+        textSize(50);
+        textAlign(CENTER, CENTER);
+        noStroke();
+        text(type.emoji, x, y - 30);
+        
+        // Name
+        fill(255);
+        textSize(16);
+        textStyle(BOLD);
+        text(type.name, x, y + 20);
+        
+        // Rarity
+        let rarityColor = getRarityColor(type.rarity);
+        fill(rarityColor);
+        textSize(12);
+        textStyle(NORMAL);
+        text(type.rarity.toUpperCase(), x, y + 38);
+        
+        // Income
+        fill(100, 255, 100);
+        textSize(14);
+        text(`+${type.income}$/s`, x, y + 58);
+        
+        // Preis
+        if (canAfford) {
+          fill(255, 215, 0);
+        } else {
+          fill(200, 100, 100);
+        }
+        textSize(16);
+        textStyle(BOLD);
+        text(`${type.price}$`, x, y + 82);
+        
+        pop();
+      }
+      
+      function spawnEnemyBrainrot() {
+        // Random Brainrot-Typ, aber mit Wahrscheinlichkeit basierend auf Seltenheit
+        let rand = random();
+        let type;
+        
+        if (rand < 0.4) {
+          // Common (40%)
+          type = random(brainrotTypes.filter(t => t.rarity === "common"));
+        } else if (rand < 0.7) {
+          // Uncommon (30%)
+          type = random(brainrotTypes.filter(t => t.rarity === "uncommon"));
+        } else if (rand < 0.88) {
+          // Rare (18%)
+          type = random(brainrotTypes.filter(t => t.rarity === "rare"));
+        } else if (rand < 0.97) {
+          // Epic (9%)
+          type = random(brainrotTypes.filter(t => t.rarity === "epic"));
+        } else {
+          // Legendary (3%)
+          type = random(brainrotTypes.filter(t => t.rarity === "legendary"));
+        }
+        
+        enemyBrainrots.push({
+          type: type,
+          level: 1,
+          x: 0,
+          y: 0
+        });
+      }
+      
+      function updateParticles() {
+        for (let i = particles.length - 1; i >= 0; i--) {
+          let p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.2; // Gravity
+          p.life--;
+          p.alpha = map(p.life, 0, p.maxLife, 0, 255);
+          
+          // Zeichne Partikel
+          noStroke();
+          fill(p.color[0], p.color[1], p.color[2], p.alpha);
+          circle(p.x, p.y, p.size);
+          
+          if (p.life <= 0) {
+            particles.splice(i, 1);
+          }
+        }
+      }
+      
+      function updateFloatingTexts() {
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+          let ft = floatingTexts[i];
+          ft.y -= 2;
+          ft.life--;
+          ft.alpha = map(ft.life, 0, ft.maxLife, 0, 255);
+          
+          // Zeichne Text
+          noStroke();
+          fill(ft.color[0], ft.color[1], ft.color[2], ft.alpha);
+          textSize(ft.size);
+          textAlign(CENTER);
+          textStyle(BOLD);
+          text(ft.text, ft.x, ft.y);
+          textStyle(NORMAL);
+          
+          if (ft.life <= 0) {
+            floatingTexts.splice(i, 1);
+          }
+        }
+      }
+      
+      function addParticles(x, y, col, count = 10) {
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: x,
+            y: y,
+            vx: random(-5, 5),
+            vy: random(-8, -2),
+            size: random(3, 8),
+            color: col,
+            life: 60,
+            maxLife: 60,
+            alpha: 255
+          });
+        }
+      }
+      
+      function addFloatingText(x, y, text, col, size = 24) {
+        floatingTexts.push({
+          x: x,
+          y: y,
+          text: text,
+          color: col,
+          size: size,
+          life: 60,
+          maxLife: 60,
+          alpha: 255
+        });
+      }
+      
+      function mousePressed() {
+        // Shop-Button
+        if (mouseX > width - 320 && mouseX < width - 180 && mouseY > 15 && mouseY < 65) {
+          shopOpen = !shopOpen;
+          playClickSound();
+          return;
+        }
+        
+        // Steal-Button
+        if (mouseX > width - 160 && mouseX < width - 20 && mouseY > 15 && mouseY < 65) {
+          if (stealCooldown === 0) {
+            stealMode = !stealMode;
+            playClickSound();
+          }
+          return;
+        }
+        
+        // Shop-Items kaufen
+        if (shopOpen) {
+          // Close-Button
+          if (mouseX > width/2 - 100 && mouseX < width/2 + 100 && mouseY > height - 100 && mouseY < height - 50) {
+            shopOpen = false;
+            playClickSound();
+            return;
+          }
+          
+          // Check Shop-Items
+          let startX = 220;
+          let startY = 220;
+          let spacing = 170;
+          
+          for (let i = 0; i < brainrotTypes.length; i++) {
+            let type = brainrotTypes[i];
+            let col = i % 6;
+            let row = floor(i / 6);
+            let x = startX + col * spacing;
+            let y = startY + row * 220;
+            
+            let d = dist(mouseX, mouseY, x, y);
+            if (d < 70) {
+              buyBrainrot(type);
+              return;
+            }
+          }
+        }
+        
+        // Steal von Enemy Brainrots
+        if (stealMode && stealCooldown === 0) {
+          for (let i = 0; i < enemyBrainrots.length; i++) {
+            let brainrot = enemyBrainrots[i];
+            let d = dist(mouseX, mouseY, brainrot.x, brainrot.y);
+            if (d < 50) {
+              stealBrainrot(i);
+              return;
+            }
+          }
+        }
+        
+        // Upgrade eigene Brainrots
+        if (!shopOpen && !stealMode) {
+          for (let i = 0; i < myBrainrots.length; i++) {
+            let brainrot = myBrainrots[i];
+            let d = dist(mouseX, mouseY, brainrot.x, brainrot.y);
+            if (d < 50) {
+              upgradeBrainrot(brainrot);
+              return;
+            }
+          }
+        }
+      }
+      
+      function buyBrainrot(type) {
+        if (money >= type.price) {
+          money -= type.price;
+          let newBrainrot = {
+            type: type,
+            level: 1,
+            x: 0,
+            y: 0
+          };
+          myBrainrots.push(newBrainrot);
+          passiveIncome += type.income;
+          
+          playBuySound();
+          addFloatingText(width/2, height/2, `Gekauft: ${type.name}!`, [100, 255, 100], 32);
+        } else {
+          playErrorSound();
+          addFloatingText(width/2, height/2, "Nicht genug Geld!", [255, 100, 100], 28);
+        }
+      }
+      
+      function stealBrainrot(index) {
+        let brainrot = enemyBrainrots[index];
+        
+        // 60% Erfolgsrate
+        let success = random() < 0.6;
+        
+        if (success) {
+          // Erfolgreich gestohlen!
+          let stolenBrainrot = {
+            type: brainrot.type,
+            level: 1,
+            x: 0,
+            y: 0
+          };
+          myBrainrots.push(stolenBrainrot);
+          passiveIncome += brainrot.type.income;
+          
+          // Entferne von Enemies
+          enemyBrainrots.splice(index, 1);
+          
+          // Spawne neues Enemy
+          spawnEnemyBrainrot();
+          
+          playStealSound();
+          addParticles(brainrot.x, brainrot.y, [255, 215, 0], 20);
+          addFloatingText(brainrot.x, brainrot.y, `Gestohlen! ${brainrot.type.name}`, [255, 215, 0], 20);
+        } else {
+          // Gescheitert!
+          playErrorSound();
+          addFloatingText(brainrot.x, brainrot.y, "Gescheitert!", [255, 100, 100], 20);
+        }
+        
+        stealMode = false;
+        stealCooldown = maxStealCooldown;
+      }
+      
+      function upgradeBrainrot(brainrot) {
+        let upgradeCost = brainrot.type.price * brainrot.level;
+        
+        if (money >= upgradeCost) {
+          money -= upgradeCost;
+          
+          // Remove old income
+          passiveIncome -= brainrot.type.income * brainrot.level;
+          
+          // Level up
+          brainrot.level++;
+          
+          // Add new income
+          passiveIncome += brainrot.type.income * brainrot.level;
+          
+          playUpgradeSound();
+          addParticles(brainrot.x, brainrot.y, brainrot.type.color, 15);
+          addFloatingText(brainrot.x, brainrot.y, `Level ${brainrot.level}!`, [255, 215, 0], 20);
+        } else {
+          playErrorSound();
+          addFloatingText(brainrot.x, brainrot.y, `Braucht ${upgradeCost}$`, [255, 100, 100], 16);
+        }
+      }
+      
+      function keyPressed() {
+        // Shop öffnen/schließen
+        if (key === 's' || key === 'S') {
+          shopOpen = !shopOpen;
+          playClickSound();
+        }
+        
+        // Steal Mode
+        if (key === ' ' && stealCooldown === 0) {
+          stealMode = !stealMode;
+          playClickSound();
+        }
+      }
+      
+      // Sound-Funktionen
+      function playClickSound() {
+        if (!audioContext) return;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+      }
+      
+      function playBuySound() {
+        if (!audioContext) return;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.05);
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.1);
+        
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.2);
+      }
+      
+      function playStealSound() {
+        if (!audioContext) return;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.15);
+        
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.2);
+      }
+      
+      function playUpgradeSound() {
+        if (!audioContext) return;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.08);
+        oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.16);
+        
+        gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.25);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.25);
+      }
+      
+      function playErrorSound() {
+        if (!audioContext) return;
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.15);
+        
+        gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.15);
+      }
+    </script>
+  </body>
+</html>
+

@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌱 Grow Garden - Garten Spiel 🌻</title>
+    <style>
+        /* ========== STYLING (Design) ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            font-size: 48px;
+        }
+
+        .game-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 250px 1fr 250px;
+            gap: 20px;
+        }
+
+        /* Linke Sidebar - Statistiken */
+        .stats-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            height: fit-content;
+        }
+
+        .stats-panel h2 {
+            color: #56ab2f;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        .money-display {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .level-display {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .xp-bar-container {
+            background: #ddd;
+            height: 12px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .xp-bar {
+            background: linear-gradient(90deg, #ffd700, #ffed4e);
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .weather-panel {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .weather-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .weather-text {
+            font-weight: bold;
+            color: #56ab2f;
+        }
+
+        .stats-list {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 15px;
+        }
+
+        .stat-item {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .stat-label {
+            font-weight: bold;
+            color: #56ab2f;
+        }
+
+        /* Mittlerer Bereich - Garten */
+        .garden-area {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .garden-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #a8e063 0%, #56ab2f 100%);
+            border-radius: 15px;
+            color: white;
+        }
+
+        .selected-seed {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .water-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .water-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .harvest-all-btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .harvest-all-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .garden-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            background: linear-gradient(135deg, #8b7355 0%, #654321 100%);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: inset 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .plot {
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, #6b5345 0%, #4a3728 100%);
+            border: 3px solid #8b7355;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .plot:hover {
+            transform: scale(1.05);
+            border-color: #a8e063;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+        }
+
+        .plot.watered {
+            background: linear-gradient(135deg, #5a4a3a 0%, #3a2a1a 100%);
+            border-color: #4facfe;
+        }
+
+        .plot-content {
+            text-align: center;
+            font-size: 48px;
+        }
+
+        .plot-info {
+            font-size: 10px;
+            color: white;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+
+        .growth-bar {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            right: 5px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .growth-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #43e97b, #38f9d7);
+            transition: width 0.3s ease;
+        }
+
+        .water-indicator {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            font-size: 16px;
+        }
+
+        /* Rechte Sidebar - Samen Shop */
+        .shop-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            height: fit-content;
+        }
+
+        .shop-panel h2 {
+            color: #56ab2f;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        .seed-item {
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 3px solid transparent;
+        }
+
+        .seed-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+
+        .seed-item.selected {
+            border-color: #56ab2f;
+            box-shadow: 0 6px 25px rgba(86, 171, 47, 0.4);
+        }
+
+        .seed-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        .seed-emoji {
+            font-size: 32px;
+        }
+
+        .seed-info {
+            flex: 1;
+        }
+
+        .seed-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2d3436;
+        }
+
+        .seed-price {
+            font-size: 14px;
+            color: #636e72;
+            font-weight: bold;
+        }
+
+        .seed-details {
+            font-size: 11px;
+            color: #636e72;
+            margin-top: 5px;
+        }
+
+        /* Achievements Panel */
+        .achievements-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            margin-top: 20px;
+            grid-column: 1 / -1;
+        }
+
+        .achievements-panel h2 {
+            color: #56ab2f;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .achievement {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            opacity: 0.5;
+            transition: all 0.3s;
+        }
+
+        .achievement.unlocked {
+            opacity: 1;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .achievement-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .achievement-name {
+            font-weight: bold;
+            color: #2d3436;
+            margin-bottom: 5px;
+        }
+
+        .achievement-desc {
+            font-size: 12px;
+            color: #636e72;
+        }
+
+        /* Nachrichten */
+        .message {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            box-shadow: 0 6px 25px rgba(0,0,0,0.3);
+            z-index: 2000;
+            animation: slideDown 0.5s ease;
+            display: none;
+        }
+
+        @keyframes slideDown {
+            from {
+                top: -100px;
+                opacity: 0;
+            }
+            to {
+                top: 100px;
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .game-container {
+                grid-template-columns: 1fr;
+            }
+
+            .garden-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .garden-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🌱 Grow Garden - Dein eigener Garten! 🌻</h1>
+    
+    <div class="game-container">
+        <!-- Linke Sidebar: Statistiken -->
+        <div class="stats-panel">
+            <h2>📊 Statistiken</h2>
+            
+            <div class="money-display">
+                💰 <span id="money">50</span> Münzen
+            </div>
+            
+            <div class="level-display">
+                🌟 Level <span id="level">1</span>
+                <div class="xp-bar-container">
+                    <div class="xp-bar" id="xp-bar" style="width: 0%;"></div>
+                </div>
+                <div style="font-size: 14px; margin-top: 5px;">
+                    <span id="xp-text">0 / 100 XP</span>
+                </div>
+            </div>
+            
+            <div class="weather-panel">
+                <div class="weather-icon" id="weather-icon">☀️</div>
+                <div class="weather-text" id="weather-text">Sonnig</div>
+                <div style="font-size: 12px; color: #636e72; margin-top: 5px;">
+                    Wachstum: <span id="weather-bonus">Normal</span>
+                </div>
+            </div>
+            
+            <div class="stats-list">
+                <div class="stat-item">
+                    <span class="stat-label">🌱 Gepflanzt:</span>
+                    <span id="planted-count">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">🌾 Geerntet:</span>
+                    <span id="harvested-count">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">💧 Bewässert:</span>
+                    <span id="watered-count">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">💰 Verdient:</span>
+                    <span id="total-earned">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mittlerer Bereich: Garten -->
+        <div class="garden-area">
+            <div class="garden-controls">
+                <div class="selected-seed">
+                    Ausgewählt: <span id="selected-seed-name">🌻 Sonnenblume</span>
+                </div>
+                <div>
+                    <button class="water-btn" onclick="waterAllPlots()">💧 Alle gießen</button>
+                    <button class="harvest-all-btn" onclick="harvestAll()">🌾 Alle ernten</button>
+                </div>
+            </div>
+            
+            <div class="garden-grid" id="garden-grid">
+                <!-- Plots werden hier erstellt -->
+            </div>
+        </div>
+
+        <!-- Rechte Sidebar: Samen Shop -->
+        <div class="shop-panel">
+            <h2>🛒 Samen Shop</h2>
+            <div id="shop-items">
+                <!-- Samen-Items werden hier erstellt -->
+            </div>
+        </div>
+
+        <!-- Achievements Panel -->
+        <div class="achievements-panel">
+            <h2>🏆 Erfolge</h2>
+            <div class="achievements-grid" id="achievements-grid">
+                <!-- Achievements werden hier erstellt -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Nachricht -->
+    <div class="message" id="message"></div>
+
+    <script>
+        // ========================================================
+        // 🎮 SPIEL-DATEN
+        // ========================================================
+        
+        const SEEDS = {
+            sunflower: {
+                name: 'Sonnenblume',
+                emoji: '🌻',
+                stages: ['🌱', '🌿', '🌻'],
+                growTime: 10, // Sekunden
+                price: 5,
+                sellPrice: 15,
+                xp: 10,
+                unlockLevel: 1
+            },
+            carrot: {
+                name: 'Karotte',
+                emoji: '🥕',
+                stages: ['🌱', '🌿', '🥕'],
+                growTime: 8,
+                price: 8,
+                sellPrice: 20,
+                xp: 12,
+                unlockLevel: 1
+            },
+            tomato: {
+                name: 'Tomate',
+                emoji: '🍅',
+                stages: ['🌱', '🌿', '🍅'],
+                growTime: 12,
+                price: 10,
+                sellPrice: 25,
+                xp: 15,
+                unlockLevel: 2
+            },
+            corn: {
+                name: 'Mais',
+                emoji: '🌽',
+                stages: ['🌱', '🌿', '🌽'],
+                growTime: 15,
+                price: 15,
+                sellPrice: 35,
+                xp: 20,
+                unlockLevel: 3
+            },
+            strawberry: {
+                name: 'Erdbeere',
+                emoji: '🍓',
+                stages: ['🌱', '🌿', '🍓'],
+                growTime: 20,
+                price: 20,
+                sellPrice: 50,
+                xp: 25,
+                unlockLevel: 4
+            },
+            pumpkin: {
+                name: 'Kürbis',
+                emoji: '🎃',
+                stages: ['🌱', '🌿', '🎃'],
+                growTime: 25,
+                price: 30,
+                sellPrice: 70,
+                xp: 35,
+                unlockLevel: 5
+            },
+            watermelon: {
+                name: 'Wassermelone',
+                emoji: '🍉',
+                stages: ['🌱', '🌿', '🍉'],
+                growTime: 30,
+                price: 40,
+                sellPrice: 100,
+                xp: 50,
+                unlockLevel: 6
+            },
+            rose: {
+                name: 'Rose',
+                emoji: '🌹',
+                stages: ['🌱', '🌿', '🌹'],
+                growTime: 35,
+                price: 50,
+                sellPrice: 130,
+                xp: 60,
+                unlockLevel: 8
+            },
+            tulip: {
+                name: 'Tulpe',
+                emoji: '🌷',
+                stages: ['🌱', '🌿', '🌷'],
+                growTime: 40,
+                price: 65,
+                sellPrice: 170,
+                xp: 75,
+                unlockLevel: 10
+            }
+        };
+
+        const WEATHER_TYPES = [
+            { name: 'Sonnig', icon: '☀️', growthMultiplier: 1.0, bonus: 'Normal' },
+            { name: 'Bewölkt', icon: '☁️', growthMultiplier: 0.9, bonus: 'Langsamer' },
+            { name: 'Regnerisch', icon: '🌧️', growthMultiplier: 1.3, bonus: '+30% schneller!' },
+            { name: 'Stürmisch', icon: '⛈️', growthMultiplier: 0.7, bonus: 'Viel langsamer' }
+        ];
+
+        const ACHIEVEMENTS = [
+            { id: 'first-plant', name: 'Erste Pflanzung', desc: 'Pflanze deine erste Pflanze', icon: '🌱', condition: () => gameData.stats.planted >= 1 },
+            { id: 'first-harvest', name: 'Erste Ernte', desc: 'Ernte deine erste Pflanze', icon: '🌾', condition: () => gameData.stats.harvested >= 1 },
+            { id: 'farmer', name: 'Bauer', desc: 'Ernte 10 Pflanzen', icon: '👨‍🌾', condition: () => gameData.stats.harvested >= 10 },
+            { id: 'rich', name: 'Reich', desc: 'Verdiene 500 Münzen', icon: '💰', condition: () => gameData.stats.totalEarned >= 500 },
+            { id: 'level-5', name: 'Profi-Gärtner', desc: 'Erreiche Level 5', icon: '🌟', condition: () => gameData.level >= 5 },
+            { id: 'full-garden', name: 'Voller Garten', desc: 'Fülle alle 24 Felder', icon: '🌻', condition: () => gameData.plots.filter(p => p.plant).length >= 24 },
+            { id: 'water-master', name: 'Bewässerungs-Meister', desc: 'Gieße 100 mal', icon: '💧', condition: () => gameData.stats.watered >= 100 },
+            { id: 'millionaire', name: 'Millionär', desc: 'Verdiene 2000 Münzen', icon: '💎', condition: () => gameData.stats.totalEarned >= 2000 }
+        ];
+
+        let gameData = {
+            money: 50,
+            level: 1,
+            xp: 0,
+            xpNeeded: 100,
+            plots: [],
+            selectedSeed: 'sunflower',
+            weather: WEATHER_TYPES[0],
+            stats: {
+                planted: 0,
+                harvested: 0,
+                watered: 0,
+                totalEarned: 0
+            },
+            achievements: []
+        };
+
+        let updateInterval = null;
+        let weatherInterval = null;
+
+        // ========================================================
+        // 🎬 INITIALISIERUNG
+        // ========================================================
+        
+        function initGame() {
+            // Erstelle 24 Plots (6x4)
+            for (let i = 0; i < 24; i++) {
+                gameData.plots.push({
+                    plant: null,
+                    plantedAt: null,
+                    watered: false,
+                    growth: 0
+                });
+            }
+            
+            loadGame();
+            createGarden();
+            createShop();
+            createAchievements();
+            updateDisplay();
+            
+            // Update-Loop starten
+            startUpdateLoop();
+            startWeatherSystem();
+        }
+
+        // ========================================================
+        // 🏗️ GARTEN ERSTELLEN
+        // ========================================================
+        
+        function createGarden() {
+            const grid = document.getElementById('garden-grid');
+            grid.innerHTML = '';
+            
+            gameData.plots.forEach((plot, index) => {
+                const plotDiv = document.createElement('div');
+                plotDiv.className = 'plot';
+                plotDiv.id = `plot-${index}`;
+                plotDiv.onclick = () => clickPlot(index);
+                
+                updatePlotDisplay(index);
+                
+                grid.appendChild(plotDiv);
+            });
+        }
+
+        function updatePlotDisplay(index) {
+            const plot = gameData.plots[index];
+            const plotDiv = document.getElementById(`plot-${index}`);
+            
+            if (!plotDiv) return;
+            
+            plotDiv.className = 'plot';
+            if (plot.watered) {
+                plotDiv.className += ' watered';
+            }
+            
+            let content = '';
+            let info = '';
+            let waterIndicator = '';
+            let growthBar = '';
+            
+            if (plot.plant) {
+                const seed = SEEDS[plot.plant];
+                const stageIndex = Math.min(
+                    Math.floor((plot.growth / 100) * seed.stages.length),
+                    seed.stages.length - 1
+                );
+                content = seed.stages[stageIndex];
+                info = `${Math.floor(plot.growth)}%`;
+                
+                if (plot.watered) {
+                    waterIndicator = '<div class="water-indicator">💧</div>';
+                }
+                
+                growthBar = `
+                    <div class="growth-bar">
+                        <div class="growth-fill" style="width: ${plot.growth}%"></div>
+                    </div>
+                `;
+            } else {
+                content = '➕';
+                info = 'Leer';
+            }
+            
+            plotDiv.innerHTML = `
+                ${waterIndicator}
+                <div class="plot-content">${content}</div>
+                <div class="plot-info">${info}</div>
+                ${growthBar}
+            `;
+        }
+
+        // ========================================================
+        // 🛒 SHOP ERSTELLEN
+        // ========================================================
+        
+        function createShop() {
+            const shopDiv = document.getElementById('shop-items');
+            shopDiv.innerHTML = '';
+            
+            Object.entries(SEEDS).forEach(([key, seed]) => {
+                if (seed.unlockLevel <= gameData.level) {
+                    const seedDiv = document.createElement('div');
+                    seedDiv.className = 'seed-item';
+                    if (gameData.selectedSeed === key) {
+                        seedDiv.className += ' selected';
+                    }
+                    seedDiv.onclick = () => selectSeed(key);
+                    
+                    seedDiv.innerHTML = `
+                        <div class="seed-header">
+                            <div class="seed-emoji">${seed.emoji}</div>
+                            <div class="seed-info">
+                                <div class="seed-name">${seed.name}</div>
+                                <div class="seed-price">💰 ${seed.price} Münzen</div>
+                            </div>
+                        </div>
+                        <div class="seed-details">
+                            ⏱️ ${seed.growTime}s | 💰 Verkauf: ${seed.sellPrice} | ⭐ +${seed.xp} XP
+                        </div>
+                    `;
+                    
+                    shopDiv.appendChild(seedDiv);
+                }
+            });
+        }
+
+        function selectSeed(seedKey) {
+            gameData.selectedSeed = seedKey;
+            const seed = SEEDS[seedKey];
+            document.getElementById('selected-seed-name').textContent = `${seed.emoji} ${seed.name}`;
+            createShop(); // Shop neu rendern um selected zu zeigen
+        }
+
+        // ========================================================
+        // 🏆 ACHIEVEMENTS ERSTELLEN
+        // ========================================================
+        
+        function createAchievements() {
+            const grid = document.getElementById('achievements-grid');
+            grid.innerHTML = '';
+            
+            ACHIEVEMENTS.forEach(achievement => {
+                const achDiv = document.createElement('div');
+                achDiv.className = 'achievement';
+                if (gameData.achievements.includes(achievement.id)) {
+                    achDiv.className += ' unlocked';
+                }
+                
+                achDiv.innerHTML = `
+                    <div class="achievement-icon">${achievement.icon}</div>
+                    <div class="achievement-name">${achievement.name}</div>
+                    <div class="achievement-desc">${achievement.desc}</div>
+                `;
+                
+                grid.appendChild(achDiv);
+            });
+        }
+
+        function checkAchievements() {
+            let newAchievements = false;
+            
+            ACHIEVEMENTS.forEach(achievement => {
+                if (!gameData.achievements.includes(achievement.id) && achievement.condition()) {
+                    gameData.achievements.push(achievement.id);
+                    showMessage(`🏆 Erfolg freigeschaltet: ${achievement.name}!`);
+                    newAchievements = true;
+                    
+                    // Bonus für Achievement
+                    gameData.money += 50;
+                    addXP(25);
+                }
+            });
+            
+            if (newAchievements) {
+                createAchievements();
+            }
+        }
+
+        // ========================================================
+        // 🎮 SPIEL-AKTIONEN
+        // ========================================================
+        
+        function clickPlot(index) {
+            const plot = gameData.plots[index];
+            
+            if (!plot.plant) {
+                // Pflanze säen
+                plantSeed(index);
+            } else if (plot.growth >= 100) {
+                // Ernten
+                harvestPlot(index);
+            } else {
+                // Gießen
+                waterPlot(index);
+            }
+        }
+
+        function plantSeed(index) {
+            const seed = SEEDS[gameData.selectedSeed];
+            
+            if (gameData.money < seed.price) {
+                showMessage('💰 Nicht genug Münzen!');
+                return;
+            }
+            
+            gameData.money -= seed.price;
+            gameData.plots[index] = {
+                plant: gameData.selectedSeed,
+                plantedAt: Date.now(),
+                watered: false,
+                growth: 0
+            };
+            
+            gameData.stats.planted++;
+            addXP(5);
+            updatePlotDisplay(index);
+            updateDisplay();
+            checkAchievements();
+            
+            showMessage(`🌱 ${seed.name} gepflanzt!`);
+        }
+
+        function waterPlot(index) {
+            const plot = gameData.plots[index];
+            
+            if (!plot.plant) {
+                showMessage('💧 Hier ist keine Pflanze!');
+                return;
+            }
+            
+            if (plot.watered) {
+                showMessage('💧 Schon gegossen!');
+                return;
+            }
+            
+            plot.watered = true;
+            gameData.stats.watered++;
+            updatePlotDisplay(index);
+            updateDisplay();
+            checkAchievements();
+            
+            showMessage('💧 Gegossen!');
+        }
+
+        function waterAllPlots() {
+            let watered = 0;
+            gameData.plots.forEach((plot, index) => {
+                if (plot.plant && !plot.watered) {
+                    plot.watered = true;
+                    gameData.stats.watered++;
+                    updatePlotDisplay(index);
+                    watered++;
+                }
+            });
+            
+            if (watered > 0) {
+                updateDisplay();
+                checkAchievements();
+                showMessage(`💧 ${watered} Pflanzen gegossen!`);
+            } else {
+                showMessage('💧 Keine Pflanzen zum Gießen!');
+            }
+        }
+
+        function harvestPlot(index) {
+            const plot = gameData.plots[index];
+            
+            if (!plot.plant || plot.growth < 100) {
+                return;
+            }
+            
+            const seed = SEEDS[plot.plant];
+            gameData.money += seed.sellPrice;
+            gameData.stats.harvested++;
+            gameData.stats.totalEarned += seed.sellPrice;
+            addXP(seed.xp);
+            
+            gameData.plots[index] = {
+                plant: null,
+                plantedAt: null,
+                watered: false,
+                growth: 0
+            };
+            
+            updatePlotDisplay(index);
+            updateDisplay();
+            checkAchievements();
+            
+            showMessage(`🌾 ${seed.name} geerntet! +${seed.sellPrice} 💰`);
+        }
+
+        function harvestAll() {
+            let harvested = 0;
+            let totalMoney = 0;
+            
+            gameData.plots.forEach((plot, index) => {
+                if (plot.plant && plot.growth >= 100) {
+                    const seed = SEEDS[plot.plant];
+                    gameData.money += seed.sellPrice;
+                    gameData.stats.harvested++;
+                    gameData.stats.totalEarned += seed.sellPrice;
+                    addXP(seed.xp);
+                    totalMoney += seed.sellPrice;
+                    
+                    gameData.plots[index] = {
+                        plant: null,
+                        plantedAt: null,
+                        watered: false,
+                        growth: 0
+                    };
+                    
+                    updatePlotDisplay(index);
+                    harvested++;
+                }
+            });
+            
+            if (harvested > 0) {
+                updateDisplay();
+                checkAchievements();
+                showMessage(`🌾 ${harvested} Pflanzen geerntet! +${totalMoney} 💰`);
+            } else {
+                showMessage('🌾 Keine reifen Pflanzen!');
+            }
+        }
+
+        // ========================================================
+        // 🌟 LEVEL & XP SYSTEM
+        // ========================================================
+        
+        function addXP(amount) {
+            gameData.xp += amount;
+            
+            if (gameData.xp >= gameData.xpNeeded) {
+                levelUp();
+            }
+            
+            updateXPBar();
+        }
+
+        function levelUp() {
+            gameData.level++;
+            gameData.xp = 0;
+            gameData.xpNeeded = Math.floor(gameData.xpNeeded * 1.5);
+            gameData.money += 100;
+            
+            updateDisplay();
+            createShop(); // Neue Samen freischalten
+            showMessage(`🎉 LEVEL UP! Level ${gameData.level}! +100 💰`);
+        }
+
+        function updateXPBar() {
+            const percentage = (gameData.xp / gameData.xpNeeded) * 100;
+            document.getElementById('xp-bar').style.width = percentage + '%';
+            document.getElementById('xp-text').textContent = `${gameData.xp} / ${gameData.xpNeeded} XP`;
+        }
+
+        // ========================================================
+        // 🌦️ WETTER-SYSTEM
+        // ========================================================
+        
+        function startWeatherSystem() {
+            changeWeather();
+            
+            weatherInterval = setInterval(() => {
+                changeWeather();
+            }, 60000); // Wetter ändert sich alle 60 Sekunden
+        }
+
+        function changeWeather() {
+            const randomWeather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
+            gameData.weather = randomWeather;
+            
+            document.getElementById('weather-icon').textContent = randomWeather.icon;
+            document.getElementById('weather-text').textContent = randomWeather.name;
+            document.getElementById('weather-bonus').textContent = randomWeather.bonus;
+            
+            if (randomWeather.growthMultiplier > 1) {
+                showMessage(`🌧️ ${randomWeather.name}! Pflanzen wachsen schneller!`);
+            }
+        }
+
+        // ========================================================
+        // ⏰ UPDATE-LOOP
+        // ========================================================
+        
+        function startUpdateLoop() {
+            updateInterval = setInterval(() => {
+                updatePlants();
+            }, 1000); // Jede Sekunde
+        }
+
+        function updatePlants() {
+            let needsUpdate = false;
+            
+            gameData.plots.forEach((plot, index) => {
+                if (plot.plant && plot.growth < 100) {
+                    const seed = SEEDS[plot.plant];
+                    
+                    // Grundwachstum: 100% / growTime
+                    let growthRate = 100 / seed.growTime;
+                    
+                    // Wetter-Bonus
+                    growthRate *= gameData.weather.growthMultiplier;
+                    
+                    // Wasser-Bonus: +50% wenn gegossen
+                    if (plot.watered) {
+                        growthRate *= 1.5;
+                    }
+                    
+                    plot.growth += growthRate;
+                    
+                    if (plot.growth >= 100) {
+                        plot.growth = 100;
+                    }
+                    
+                    // Wasser-Effekt hält 10 Sekunden
+                    if (plot.watered) {
+                        const timeSinceWater = Date.now() - (plot.wateredAt || Date.now());
+                        if (timeSinceWater > 10000) {
+                            plot.watered = false;
+                        }
+                    }
+                    
+                    if (plot.watered && !plot.wateredAt) {
+                        plot.wateredAt = Date.now();
+                    }
+                    
+                    updatePlotDisplay(index);
+                    needsUpdate = true;
+                }
+            });
+        }
+
+        // ========================================================
+        // 🎨 ANZEIGE AKTUALISIEREN
+        // ========================================================
+        
+        function updateDisplay() {
+            document.getElementById('money').textContent = gameData.money;
+            document.getElementById('level').textContent = gameData.level;
+            document.getElementById('planted-count').textContent = gameData.stats.planted;
+            document.getElementById('harvested-count').textContent = gameData.stats.harvested;
+            document.getElementById('watered-count').textContent = gameData.stats.watered;
+            document.getElementById('total-earned').textContent = gameData.stats.totalEarned;
+            updateXPBar();
+        }
+
+        // ========================================================
+        // 💬 NACHRICHTEN
+        // ========================================================
+        
+        function showMessage(text) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.style.display = 'block';
+            
+            setTimeout(() => {
+                msg.style.display = 'none';
+            }, 2000);
+        }
+
+        // ========================================================
+        // 💾 SPEICHERN & LADEN
+        // ========================================================
+        
+        function saveGame() {
+            localStorage.setItem('growGardenGame', JSON.stringify(gameData));
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('growGardenGame');
+            if (saved) {
+                const loadedData = JSON.parse(saved);
+                // Merge mit aktuellen gameData (für neue Features)
+                gameData = { ...gameData, ...loadedData };
+                
+                // Stelle sicher dass alle Plots existieren
+                while (gameData.plots.length < 24) {
+                    gameData.plots.push({
+                        plant: null,
+                        plantedAt: null,
+                        watered: false,
+                        growth: 0
+                    });
+                }
+            }
+        }
+
+        // Auto-Save alle 5 Sekunden
+        setInterval(saveGame, 5000);
+
+        // ========================================================
+        // 🎬 SPIEL STARTEN
+        // ========================================================
+        
+        window.onload = function() {
+            initGame();
+        };
+
+        // Speichern beim Verlassen
+        window.onbeforeunload = function() {
+            saveGame();
+        };
+    </script>
+</body>
+</html>
+

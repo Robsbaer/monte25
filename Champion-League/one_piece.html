@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One Piece - Devil Fruit Hunter</title>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+    <script>
+        // Spieler (Ruffy)
+        let player = {
+            x: 150,
+            y: 300,
+            vx: 0,
+            vy: 0,
+            speed: 6,
+            size: 50,
+            jumping: false,
+            onGround: true,
+            health: 100,
+            maxHealth: 100,
+            power: 0,
+            maxPower: 100,
+            gearSecond: false,
+            gearSecondTimer: 0
+        };
+
+        // Spielparameter
+        let gravity = 0.8;
+        let jumpStrength = -15;
+        let score = 0;
+        let gameOver = false;
+        let gameStarted = false;
+        let highScore = 0;
+
+        // Level-System
+        let level = 1;
+        let levelProgress = 0;
+        let levelUpMessage = false;
+        let levelUpTimer = 0;
+
+        // Devil Fruits
+        let devilFruits = [];
+        let fruitSpawnTimer = 0;
+        let fruitTypes = [
+            { name: 'Gomu Gomu', color: [255, 100, 100], points: 10, power: 20 },
+            { name: 'Mera Mera', color: [255, 150, 0], points: 15, power: 25 },
+            { name: 'Hie Hie', color: [100, 200, 255], points: 15, power: 25 },
+            { name: 'Ope Ope', color: [200, 100, 255], points: 20, power: 30 },
+            { name: 'Goro Goro', color: [255, 255, 0], points: 25, power: 35 }
+        ];
+
+        // Marines (Gegner)
+        let marines = [];
+        let marineSpawnTimer = 0;
+        let marineSpeed = 3;
+
+        // Kanonenkugeln
+        let cannonballs = [];
+        let cannonballTimer = 0;
+
+        // Inseln/Plattformen
+        let islands = [];
+        let islandSpeed = 3;
+
+        // Wolken
+        let clouds = [];
+
+        // Wellen
+        let waveOffset = 0;
+
+        // Partikel-Effekte
+        let particles = [];
+
+        // Animationen
+        let animationFrame = 0;
+
+        // Audio Context
+        let audioContext;
+
+        function setup() {
+            createCanvas(1200, 700);
+            
+            // Audio initialisieren
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // Initiale Wolken
+            for (let i = 0; i < 10; i++) {
+                clouds.push({
+                    x: random(0, width),
+                    y: random(50, 250),
+                    size: random(60, 140),
+                    speed: random(0.3, 0.8)
+                });
+            }
+
+            // Initiale Inseln
+            for (let i = 0; i < 4; i++) {
+                islands.push({
+                    x: i * 400 + 200,
+                    y: height - 150 + random(-50, 50),
+                    width: random(200, 350),
+                    height: random(40, 70)
+                });
+            }
+
+            // Lade Highscore
+            if (localStorage.getItem('onePieceHighScore')) {
+                highScore = parseInt(localStorage.getItem('onePieceHighScore'));
+            }
+        }
+
+        function draw() {
+            // Hintergrund
+            drawOceanSky();
+            
+            // Wellen animieren
+            waveOffset += 0.05;
+            
+            // Animation Frame erhöhen
+            animationFrame++;
+
+            if (!gameStarted) {
+                drawStartScreen();
+                return;
+            }
+
+            if (gameOver) {
+                drawGameOverScreen();
+                return;
+            }
+
+            // Wolken bewegen und zeichnen
+            updateAndDrawClouds();
+
+            // Wellen zeichnen
+            drawOceanWaves();
+
+            // Inseln bewegen und zeichnen
+            updateAndDrawIslands();
+
+            // Spieler-Bewegung
+            updatePlayer();
+
+            // Devil Fruits spawnen und bewegen
+            updateDevilFruits();
+
+            // Marines spawnen und bewegen
+            updateMarines();
+
+            // Kanonenkugeln spawnen und bewegen
+            updateCannonballs();
+
+            // Kollisionen prüfen
+            checkCollisions();
+
+            // Partikel updaten
+            updateParticles();
+
+            // Spieler zeichnen
+            drawPlayer();
+
+            // Devil Fruits zeichnen
+            drawDevilFruits();
+
+            // Marines zeichnen
+            drawMarines();
+
+            // Kanonenkugeln zeichnen
+            drawCannonballs();
+
+            // Partikel zeichnen
+            drawParticles();
+
+            // HUD zeichnen
+            drawHUD();
+
+            // Level-Up Nachricht
+            if (levelUpMessage) {
+                drawLevelUpMessage();
+            }
+
+            // Score erhöhen mit der Zeit
+            if (frameCount % 60 === 0) {
+                score += 1;
+                levelProgress += 1;
+                
+                if (levelProgress >= 30) {
+                    levelUp();
+                }
+            }
+
+            // Gear Second Timer
+            if (player.gearSecond) {
+                player.gearSecondTimer--;
+                if (player.gearSecondTimer <= 0) {
+                    player.gearSecond = false;
+                }
+            }
+        }
+
+        function drawOceanSky() {
+            // Himmel Gradient
+            for (let i = 0; i < height * 0.6; i++) {
+                let inter = map(i, 0, height * 0.6, 0, 1);
+                let c = lerpColor(color(135, 206, 250), color(100, 180, 255), inter);
+                stroke(c);
+                line(0, i, width, i);
+            }
+            
+            // Ozean Gradient
+            for (let i = height * 0.6; i < height; i++) {
+                let inter = map(i, height * 0.6, height, 0, 1);
+                let c = lerpColor(color(50, 150, 255), color(20, 80, 180), inter);
+                stroke(c);
+                line(0, i, width, i);
+            }
+
+            // Sonne
+            noStroke();
+            fill(255, 220, 100, 200);
+            circle(width - 150, 120, 140);
+            fill(255, 240, 150, 150);
+            circle(width - 150, 120, 180);
+        }
+
+        function updateAndDrawClouds() {
+            for (let cloud of clouds) {
+                cloud.x -= cloud.speed;
+                
+                if (cloud.x + cloud.size < 0) {
+                    cloud.x = width + 50;
+                    cloud.y = random(50, 250);
+                    cloud.size = random(60, 140);
+                }
+                
+                drawCloud(cloud);
+            }
+        }
+
+        function drawCloud(cloud) {
+            noStroke();
+            fill(255, 255, 255, 180);
+            ellipse(cloud.x, cloud.y, cloud.size, cloud.size * 0.6);
+            ellipse(cloud.x + cloud.size * 0.3, cloud.y, cloud.size * 0.8, cloud.size * 0.5);
+            ellipse(cloud.x - cloud.size * 0.3, cloud.y, cloud.size * 0.7, cloud.size * 0.5);
+        }
+
+        function drawOceanWaves() {
+            noStroke();
+            fill(30, 120, 220, 100);
+            beginShape();
+            vertex(0, height);
+            for (let x = 0; x <= width; x += 20) {
+                let y = height - 100 + sin(waveOffset + x * 0.02) * 15;
+                vertex(x, y);
+            }
+            vertex(width, height);
+            endShape(CLOSE);
+
+            // Zweite Wellen-Schicht
+            fill(40, 140, 240, 80);
+            beginShape();
+            vertex(0, height);
+            for (let x = 0; x <= width; x += 20) {
+                let y = height - 80 + sin(waveOffset * 1.3 + x * 0.025) * 12;
+                vertex(x, y);
+            }
+            vertex(width, height);
+            endShape(CLOSE);
+        }
+
+        function updateAndDrawIslands() {
+            for (let i = islands.length - 1; i >= 0; i--) {
+                let island = islands[i];
+                island.x -= islandSpeed;
+                
+                if (island.x + island.width < 0) {
+                    islands.splice(i, 1);
+                    islands.push({
+                        x: width + 100,
+                        y: height - 150 + random(-50, 50),
+                        width: random(200, 350),
+                        height: random(40, 70)
+                    });
+                }
+                
+                drawIsland(island);
+            }
+        }
+
+        function drawIsland(island) {
+            // Insel-Körper
+            noStroke();
+            fill(139, 90, 43);
+            ellipse(island.x + island.width / 2, island.y, island.width, island.height);
+            
+            // Gras oben
+            fill(76, 187, 23);
+            ellipse(island.x + island.width / 2, island.y - island.height / 3, island.width * 0.9, island.height * 0.4);
+            
+            // Palmen
+            let palmX = island.x + island.width / 2 - 30;
+            drawPalm(palmX, island.y - island.height / 2);
+            
+            if (island.width > 250) {
+                palmX = island.x + island.width / 2 + 40;
+                drawPalm(palmX, island.y - island.height / 2);
+            }
+        }
+
+        function drawPalm(x, y) {
+            // Stamm
+            stroke(101, 67, 33);
+            strokeWeight(6);
+            line(x, y, x + 5, y - 60);
+            
+            // Blätter
+            noStroke();
+            fill(34, 139, 34);
+            for (let i = 0; i < 6; i++) {
+                let angle = (TWO_PI / 6) * i;
+                let leafX = x + 5 + cos(angle) * 30;
+                let leafY = y - 60 + sin(angle) * 30;
+                ellipse(leafX, leafY, 40, 15);
+            }
+        }
+
+        function updatePlayer() {
+            // Horizontale Bewegung
+            if (keyIsDown(LEFT_ARROW) || keyIsDown(65)) { // A
+                player.vx = -player.speed;
+            } else if (keyIsDown(RIGHT_ARROW) || keyIsDown(68)) { // D
+                player.vx = player.speed;
+            } else {
+                player.vx = 0;
+            }
+
+            // Gear Second Geschwindigkeit
+            if (player.gearSecond) {
+                player.vx *= 1.8;
+            }
+
+            player.x += player.vx;
+
+            // Bildschirm-Grenzen
+            player.x = constrain(player.x, player.size / 2, width - player.size / 2);
+
+            // Vertikale Bewegung (Gravitation)
+            player.vy += gravity;
+            player.y += player.vy;
+
+            // Boden-Kollision (einfach für Demo)
+            let groundY = height - 120;
+            if (player.y >= groundY) {
+                player.y = groundY;
+                player.vy = 0;
+                player.jumping = false;
+                player.onGround = true;
+            } else {
+                player.onGround = false;
+            }
+
+            // Plattform-Kollisionen
+            for (let island of islands) {
+                if (player.x > island.x - player.size / 2 && 
+                    player.x < island.x + island.width + player.size / 2) {
+                    let islandTop = island.y - island.height / 2;
+                    if (player.y + player.size / 2 > islandTop && 
+                        player.y + player.size / 2 < islandTop + 30 && 
+                        player.vy > 0) {
+                        player.y = islandTop - player.size / 2;
+                        player.vy = 0;
+                        player.jumping = false;
+                        player.onGround = true;
+                    }
+                }
+            }
+        }
+
+        function drawPlayer() {
+            push();
+            translate(player.x, player.y);
+            
+            // Gear Second Aura
+            if (player.gearSecond) {
+                noFill();
+                stroke(255, 100, 100, 150);
+                strokeWeight(3);
+                circle(0, 0, player.size + 20 + sin(animationFrame * 0.2) * 5);
+                
+                // Steam Effekt
+                for (let i = 0; i < 3; i++) {
+                    let angle = random(TWO_PI);
+                    let dist = random(player.size / 2, player.size);
+                    let px = cos(angle) * dist;
+                    let py = sin(angle) * dist;
+                    fill(255, 255, 255, random(100, 200));
+                    noStroke();
+                    circle(px, py, random(3, 8));
+                }
+            }
+            
+            noStroke();
+            
+            // Körper
+            fill(255, 100, 100);
+            ellipse(0, 0, player.size * 0.8, player.size);
+            
+            // Kopf
+            fill(250, 220, 170);
+            circle(0, -player.size * 0.4, player.size * 0.6);
+            
+            // Strohhut
+            fill(255, 230, 150);
+            ellipse(0, -player.size * 0.65, player.size * 0.8, player.size * 0.25);
+            fill(220, 180, 100);
+            rect(-player.size * 0.25, -player.size * 0.75, player.size * 0.5, player.size * 0.15, 5);
+            
+            // Hutband
+            fill(200, 50, 50);
+            rect(-player.size * 0.27, -player.size * 0.65, player.size * 0.54, player.size * 0.08);
+            
+            // Gesicht
+            fill(0);
+            circle(-player.size * 0.1, -player.size * 0.45, player.size * 0.08);
+            circle(player.size * 0.1, -player.size * 0.45, player.size * 0.08);
+            
+            // Lächeln
+            noFill();
+            stroke(0);
+            strokeWeight(2);
+            arc(0, -player.size * 0.3, player.size * 0.3, player.size * 0.15, 0, PI);
+            
+            // Narbe unter dem Auge
+            stroke(150, 50, 50);
+            line(-player.size * 0.1, -player.size * 0.35, -player.size * 0.1, -player.size * 0.25);
+            line(-player.size * 0.12, -player.size * 0.32, -player.size * 0.08, -player.size * 0.32);
+            
+            // Arme
+            noStroke();
+            fill(250, 220, 170);
+            ellipse(-player.size * 0.45, 0, player.size * 0.2, player.size * 0.5);
+            ellipse(player.size * 0.45, 0, player.size * 0.2, player.size * 0.5);
+            
+            // Beine
+            fill(50, 100, 200);
+            ellipse(-player.size * 0.2, player.size * 0.45, player.size * 0.25, player.size * 0.35);
+            ellipse(player.size * 0.2, player.size * 0.45, player.size * 0.25, player.size * 0.35);
+            
+            // Schuhe
+            fill(150, 120, 70);
+            ellipse(-player.size * 0.2, player.size * 0.6, player.size * 0.2, player.size * 0.15);
+            ellipse(player.size * 0.2, player.size * 0.6, player.size * 0.2, player.size * 0.15);
+            
+            pop();
+        }
+
+        function updateDevilFruits() {
+            fruitSpawnTimer++;
+            
+            let spawnInterval = max(80, 150 - level * 5);
+            
+            if (fruitSpawnTimer >= spawnInterval) {
+                fruitSpawnTimer = 0;
+                let type = random(fruitTypes);
+                devilFruits.push({
+                    x: width + 30,
+                    y: random(150, height - 200),
+                    size: 35,
+                    type: type,
+                    rotation: 0
+                });
+            }
+
+            for (let i = devilFruits.length - 1; i >= 0; i--) {
+                let fruit = devilFruits[i];
+                fruit.x -= islandSpeed + 1;
+                fruit.rotation += 0.05;
+                
+                if (fruit.x < -50) {
+                    devilFruits.splice(i, 1);
+                }
+            }
+        }
+
+        function drawDevilFruits() {
+            for (let fruit of devilFruits) {
+                push();
+                translate(fruit.x, fruit.y);
+                rotate(fruit.rotation);
+                
+                // Glanz-Effekt
+                noStroke();
+                fill(255, 255, 255, 100);
+                circle(-fruit.size * 0.2, -fruit.size * 0.2, fruit.size * 0.4);
+                
+                // Frucht-Körper
+                fill(fruit.type.color);
+                beginShape();
+                for (let i = 0; i < 8; i++) {
+                    let angle = (TWO_PI / 8) * i;
+                    let r = fruit.size * (0.8 + sin(angle * 4) * 0.2);
+                    let x = cos(angle) * r;
+                    let y = sin(angle) * r;
+                    vertex(x, y);
+                }
+                endShape(CLOSE);
+                
+                // Spiralmuster
+                stroke(fruit.type.color[0] * 0.6, fruit.type.color[1] * 0.6, fruit.type.color[2] * 0.6);
+                strokeWeight(2);
+                noFill();
+                for (let i = 0; i < 3; i++) {
+                    let offset = i * TWO_PI / 3;
+                    arc(0, 0, fruit.size * 0.6, fruit.size * 0.6, offset, offset + PI);
+                }
+                
+                // Stiel
+                stroke(34, 139, 34);
+                strokeWeight(3);
+                line(0, -fruit.size * 0.5, 0, -fruit.size * 0.8);
+                
+                // Blatt
+                noStroke();
+                fill(34, 139, 34);
+                ellipse(fruit.size * 0.2, -fruit.size * 0.7, fruit.size * 0.3, fruit.size * 0.2);
+                
+                pop();
+            }
+        }
+
+        function updateMarines() {
+            marineSpawnTimer++;
+            
+            let spawnInterval = max(100, 200 - level * 8);
+            
+            if (marineSpawnTimer >= spawnInterval) {
+                marineSpawnTimer = 0;
+                marines.push({
+                    x: width + 30,
+                    y: height - 120,
+                    size: 45,
+                    vx: -(marineSpeed + level * 0.3),
+                    type: random() > 0.7 ? 'officer' : 'soldier'
+                });
+            }
+
+            for (let i = marines.length - 1; i >= 0; i--) {
+                let marine = marines[i];
+                marine.x += marine.vx;
+                
+                if (marine.x < -50) {
+                    marines.splice(i, 1);
+                }
+            }
+        }
+
+        function drawMarines() {
+            for (let marine of marines) {
+                push();
+                translate(marine.x, marine.y);
+                
+                noStroke();
+                
+                // Marine Uniform
+                if (marine.type === 'officer') {
+                    fill(255, 255, 255); // Weiß
+                } else {
+                    fill(50, 100, 200); // Blau
+                }
+                ellipse(0, 0, marine.size * 0.7, marine.size);
+                
+                // Kopf
+                fill(250, 220, 170);
+                circle(0, -marine.size * 0.4, marine.size * 0.5);
+                
+                // Marine Kappe
+                if (marine.type === 'officer') {
+                    fill(255, 255, 255);
+                } else {
+                    fill(30, 60, 150);
+                }
+                arc(0, -marine.size * 0.55, marine.size * 0.55, marine.size * 0.4, PI, TWO_PI);
+                rect(-marine.size * 0.3, -marine.size * 0.55, marine.size * 0.6, marine.size * 0.08);
+                
+                // Marine Logo (Möwe)
+                fill(200, 200, 200);
+                ellipse(0, -marine.size * 0.65, marine.size * 0.15, marine.size * 0.08);
+                
+                // Gesicht (böse)
+                fill(0);
+                circle(-marine.size * 0.08, -marine.size * 0.42, marine.size * 0.06);
+                circle(marine.size * 0.08, -marine.size * 0.42, marine.size * 0.06);
+                
+                // Böser Mund
+                stroke(0);
+                strokeWeight(2);
+                noFill();
+                arc(0, -marine.size * 0.25, marine.size * 0.25, marine.size * 0.15, PI, TWO_PI);
+                
+                // Arme
+                noStroke();
+                if (marine.type === 'officer') {
+                    fill(255, 255, 255);
+                } else {
+                    fill(50, 100, 200);
+                }
+                ellipse(-marine.size * 0.4, 0, marine.size * 0.15, marine.size * 0.4);
+                ellipse(marine.size * 0.4, 0, marine.size * 0.15, marine.size * 0.4);
+                
+                // Beine
+                ellipse(-marine.size * 0.15, marine.size * 0.45, marine.size * 0.2, marine.size * 0.3);
+                ellipse(marine.size * 0.15, marine.size * 0.45, marine.size * 0.2, marine.size * 0.3);
+                
+                pop();
+            }
+        }
+
+        function updateCannonballs() {
+            cannonballTimer++;
+            
+            let shootInterval = max(120, 250 - level * 10);
+            
+            if (cannonballTimer >= shootInterval && random() > 0.5) {
+                cannonballTimer = 0;
+                cannonballs.push({
+                    x: width + 20,
+                    y: random(200, height - 200),
+                    vx: -(6 + level * 0.5),
+                    vy: random(-2, 2),
+                    size: 25,
+                    trail: []
+                });
+            }
+
+            for (let i = cannonballs.length - 1; i >= 0; i--) {
+                let ball = cannonballs[i];
+                
+                // Trail hinzufügen
+                ball.trail.push({x: ball.x, y: ball.y});
+                if (ball.trail.length > 8) {
+                    ball.trail.shift();
+                }
+                
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+                ball.vy += gravity * 0.3;
+                
+                if (ball.x < -50 || ball.y > height) {
+                    cannonballs.splice(i, 1);
+                }
+            }
+        }
+
+        function drawCannonballs() {
+            for (let ball of cannonballs) {
+                // Trail zeichnen
+                noStroke();
+                for (let i = 0; i < ball.trail.length; i++) {
+                    let alpha = map(i, 0, ball.trail.length, 0, 100);
+                    fill(100, 100, 100, alpha);
+                    circle(ball.trail[i].x, ball.trail[i].y, ball.size * 0.6);
+                }
+                
+                // Kanonenkugel
+                fill(40, 40, 40);
+                circle(ball.x, ball.y, ball.size);
+                
+                // Glanz
+                fill(80, 80, 80);
+                circle(ball.x - ball.size * 0.2, ball.y - ball.size * 0.2, ball.size * 0.3);
+            }
+        }
+
+        function checkCollisions() {
+            // Devil Fruits sammeln
+            for (let i = devilFruits.length - 1; i >= 0; i--) {
+                let fruit = devilFruits[i];
+                let d = dist(player.x, player.y, fruit.x, fruit.y);
+                
+                if (d < (player.size / 2 + fruit.size / 2)) {
+                    // Punkte und Power
+                    score += fruit.type.points;
+                    player.power = min(player.maxPower, player.power + fruit.type.power);
+                    
+                    // Sound-Effekt
+                    playCollectSound();
+                    
+                    // Partikel-Effekt
+                    createParticles(fruit.x, fruit.y, fruit.type.color, 15);
+                    
+                    devilFruits.splice(i, 1);
+                }
+            }
+
+            // Marine Kollisionen
+            for (let i = marines.length - 1; i >= 0; i--) {
+                let marine = marines[i];
+                let d = dist(player.x, player.y, marine.x, marine.y);
+                
+                if (d < (player.size / 2 + marine.size / 2)) {
+                    if (!player.gearSecond) {
+                        takeDamage(20);
+                        marines.splice(i, 1);
+                        createParticles(marine.x, marine.y, [255, 0, 0], 10);
+                    } else {
+                        // Im Gear Second können wir Marines besiegen
+                        score += 30;
+                        marines.splice(i, 1);
+                        createParticles(marine.x, marine.y, [255, 200, 0], 15);
+                        playHitSound();
+                    }
+                }
+            }
+
+            // Kanonenkugel Kollisionen
+            for (let i = cannonballs.length - 1; i >= 0; i--) {
+                let ball = cannonballs[i];
+                let d = dist(player.x, player.y, ball.x, ball.y);
+                
+                if (d < (player.size / 2 + ball.size / 2)) {
+                    takeDamage(30);
+                    cannonballs.splice(i, 1);
+                    createParticles(ball.x, ball.y, [255, 100, 0], 20);
+                }
+            }
+        }
+
+        function takeDamage(amount) {
+            player.health -= amount;
+            playHitSound();
+            
+            if (player.health <= 0) {
+                player.health = 0;
+                endGame();
+            }
+        }
+
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: random(-5, 5),
+                    vy: random(-8, -2),
+                    size: random(5, 15),
+                    color: color,
+                    alpha: 255,
+                    life: 60
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.3;
+                p.life--;
+                p.alpha = map(p.life, 0, 60, 0, 255);
+                
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function drawParticles() {
+            noStroke();
+            for (let p of particles) {
+                fill(p.color[0], p.color[1], p.color[2], p.alpha);
+                circle(p.x, p.y, p.size);
+            }
+        }
+
+        function drawHUD() {
+            // Health Bar
+            push();
+            stroke(0);
+            strokeWeight(3);
+            fill(50, 50, 50, 200);
+            rect(30, 30, 210, 35, 5);
+            
+            // Health
+            noStroke();
+            let healthWidth = map(player.health, 0, player.maxHealth, 0, 200);
+            if (player.health > 50) {
+                fill(76, 187, 23);
+            } else if (player.health > 25) {
+                fill(255, 200, 0);
+            } else {
+                fill(255, 50, 50);
+            }
+            rect(35, 35, healthWidth, 25, 3);
+            
+            fill(255);
+            textSize(16);
+            textAlign(CENTER);
+            text(`HP: ${player.health}/${player.maxHealth}`, 135, 52);
+            pop();
+
+            // Power Bar
+            push();
+            stroke(0);
+            strokeWeight(3);
+            fill(50, 50, 50, 200);
+            rect(30, 75, 210, 25, 5);
+            
+            // Power
+            noStroke();
+            let powerWidth = map(player.power, 0, player.maxPower, 0, 200);
+            fill(255, 100, 255);
+            rect(35, 80, powerWidth, 15, 3);
+            
+            fill(255);
+            textSize(14);
+            textAlign(CENTER);
+            text(`Power: ${player.power}`, 135, 93);
+            pop();
+
+            // Score
+            push();
+            fill(0, 0, 0, 180);
+            noStroke();
+            rect(width - 260, 30, 230, 50, 5);
+            
+            fill(255, 215, 0);
+            textSize(24);
+            textAlign(LEFT);
+            text(`Score: ${score}`, width - 245, 60);
+            pop();
+
+            // Level
+            push();
+            fill(0, 0, 0, 180);
+            noStroke();
+            rect(width - 260, 90, 230, 40, 5);
+            
+            fill(100, 200, 255);
+            textSize(20);
+            textAlign(LEFT);
+            text(`Level: ${level}`, width - 245, 115);
+            pop();
+
+            // Gear Second Anzeige
+            if (player.gearSecond) {
+                push();
+                fill(255, 50, 50, 200);
+                stroke(255, 255, 255);
+                strokeWeight(3);
+                rect(width / 2 - 100, 30, 200, 40, 10);
+                
+                fill(255);
+                textSize(22);
+                textAlign(CENTER);
+                text("GEAR SECOND!", width / 2, 57);
+                pop();
+            }
+
+            // Steuerung Info (unten links)
+            push();
+            fill(0, 0, 0, 150);
+            noStroke();
+            rect(20, height - 130, 280, 110, 5);
+            
+            fill(255);
+            textSize(14);
+            textAlign(LEFT);
+            text("Steuerung:", 30, height - 105);
+            text("← → oder A D: Bewegen", 30, height - 85);
+            text("SPACE: Springen", 30, height - 65);
+            text("G: Gear Second (100 Power)", 30, height - 45);
+            text("R: Neustart", 30, height - 25);
+            pop();
+        }
+
+        function drawStartScreen() {
+            background(20, 80, 180);
+            
+            // Titel
+            fill(255, 215, 0);
+            stroke(255, 100, 100);
+            strokeWeight(5);
+            textSize(80);
+            textAlign(CENTER);
+            text("ONE PIECE", width / 2, height / 3);
+            
+            fill(255);
+            stroke(0);
+            strokeWeight(3);
+            textSize(50);
+            text("Devil Fruit Hunter", width / 2, height / 3 + 70);
+            
+            // Anleitung
+            noStroke();
+            fill(255, 255, 255, 200);
+            textSize(24);
+            text("Sammle Devil Fruits und weiche Marines aus!", width / 2, height / 2 + 20);
+            
+            textSize(20);
+            text("← → oder A D: Bewegen", width / 2, height / 2 + 60);
+            text("SPACE: Springen", width / 2, height / 2 + 90);
+            text("G: Gear Second aktivieren (bei 100 Power)", width / 2, height / 2 + 120);
+            
+            // Start-Anweisung
+            fill(255, 215, 0);
+            textSize(30);
+            let alpha = map(sin(animationFrame * 0.05), -1, 1, 100, 255);
+            fill(255, alpha);
+            text("Drücke SPACE zum Starten!", width / 2, height - 100);
+            
+            // Highscore
+            if (highScore > 0) {
+                fill(255);
+                textSize(24);
+                text(`Highscore: ${highScore}`, width / 2, height - 50);
+            }
+            
+            // Kleiner Ruffy
+            push();
+            translate(width / 2, height / 2 - 100);
+            scale(1.5);
+            drawPlayer();
+            pop();
+        }
+
+        function drawGameOverScreen() {
+            // Halbtransparenter Overlay
+            fill(0, 0, 0, 150);
+            rect(0, 0, width, height);
+            
+            // Game Over Text
+            fill(255, 50, 50);
+            stroke(0);
+            strokeWeight(5);
+            textSize(80);
+            textAlign(CENTER);
+            text("GAME OVER", width / 2, height / 2 - 80);
+            
+            // Score
+            fill(255, 215, 0);
+            textSize(40);
+            text(`Final Score: ${score}`, width / 2, height / 2);
+            
+            // Highscore
+            if (score > highScore) {
+                fill(255, 100, 255);
+                textSize(30);
+                text("NEUER HIGHSCORE!", width / 2, height / 2 + 50);
+            } else {
+                fill(255);
+                textSize(24);
+                text(`Highscore: ${highScore}`, width / 2, height / 2 + 50);
+            }
+            
+            // Neustart-Anweisung
+            fill(255);
+            textSize(28);
+            let alpha = map(sin(animationFrame * 0.05), -1, 1, 100, 255);
+            fill(255, alpha);
+            text("Drücke R zum Neustarten", width / 2, height / 2 + 120);
+        }
+
+        function drawLevelUpMessage() {
+            push();
+            translate(width / 2, 150);
+            
+            let scale = map(levelUpTimer, 0, 120, 0.5, 1.5);
+            scale = min(scale, 1.2);
+            
+            push();
+            scale(scale);
+            
+            fill(255, 215, 0);
+            stroke(255, 100, 100);
+            strokeWeight(4);
+            textSize(50);
+            textAlign(CENTER);
+            text(`LEVEL ${level}!`, 0, 0);
+            pop();
+            
+            pop();
+            
+            levelUpTimer++;
+            if (levelUpTimer >= 120) {
+                levelUpMessage = false;
+                levelUpTimer = 0;
+            }
+        }
+
+        function levelUp() {
+            level++;
+            levelProgress = 0;
+            levelUpMessage = true;
+            levelUpTimer = 0;
+            
+            // Belohnung
+            player.health = min(player.maxHealth, player.health + 30);
+            score += 50;
+            
+            playLevelUpSound();
+        }
+
+        function keyPressed() {
+            if (!gameStarted && key === ' ') {
+                gameStarted = true;
+                return;
+            }
+
+            if (gameOver && (key === 'r' || key === 'R')) {
+                resetGame();
+                return;
+            }
+
+            if (gameStarted && !gameOver) {
+                if (key === ' ' && player.onGround) {
+                    player.vy = jumpStrength;
+                    player.jumping = true;
+                    player.onGround = false;
+                    playJumpSound();
+                }
+
+                if ((key === 'g' || key === 'G') && player.power >= 100 && !player.gearSecond) {
+                    activateGearSecond();
+                }
+            }
+        }
+
+        function activateGearSecond() {
+            player.gearSecond = true;
+            player.gearSecondTimer = 300; // 5 Sekunden bei 60 FPS
+            player.power = 0;
+            player.speed *= 1.5;
+            
+            playPowerUpSound();
+            
+            // Große Partikel-Explosion
+            createParticles(player.x, player.y, [255, 100, 100], 50);
+        }
+
+        function endGame() {
+            gameOver = true;
+            
+            // Highscore speichern
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('onePieceHighScore', highScore);
+            }
+        }
+
+        function resetGame() {
+            // Spieler zurücksetzen
+            player.x = 150;
+            player.y = 300;
+            player.vx = 0;
+            player.vy = 0;
+            player.health = 100;
+            player.power = 0;
+            player.gearSecond = false;
+            player.gearSecondTimer = 0;
+            player.speed = 6;
+
+            // Spiel zurücksetzen
+            score = 0;
+            level = 1;
+            levelProgress = 0;
+            gameOver = false;
+            gameStarted = false;
+
+            // Arrays leeren
+            devilFruits = [];
+            marines = [];
+            cannonballs = [];
+            particles = [];
+
+            // Timer zurücksetzen
+            fruitSpawnTimer = 0;
+            marineSpawnTimer = 0;
+            cannonballTimer = 0;
+        }
+
+        // Sound-Funktionen
+        function playCollectSound() {
+            if (!audioContext) return;
+            let osc = audioContext.createOscillator();
+            let gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = 800;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            osc.start(audioContext.currentTime);
+            osc.stop(audioContext.currentTime + 0.2);
+        }
+
+        function playJumpSound() {
+            if (!audioContext) return;
+            let osc = audioContext.createOscillator();
+            let gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = 400;
+            osc.type = 'square';
+            gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            osc.start(audioContext.currentTime);
+            osc.stop(audioContext.currentTime + 0.1);
+        }
+
+        function playHitSound() {
+            if (!audioContext) return;
+            let osc = audioContext.createOscillator();
+            let gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = 150;
+            osc.type = 'sawtooth';
+            gain.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+            osc.start(audioContext.currentTime);
+            osc.stop(audioContext.currentTime + 0.15);
+        }
+
+        function playPowerUpSound() {
+            if (!audioContext) return;
+            let osc = audioContext.createOscillator();
+            let gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.setValueAtTime(200, audioContext.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.3);
+            osc.type = 'square';
+            gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            osc.start(audioContext.currentTime);
+            osc.stop(audioContext.currentTime + 0.3);
+        }
+
+        function playLevelUpSound() {
+            if (!audioContext) return;
+            let osc = audioContext.createOscillator();
+            let gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.setValueAtTime(400, audioContext.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1000, audioContext.currentTime + 0.4);
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+            osc.start(audioContext.currentTime);
+            osc.stop(audioContext.currentTime + 0.4);
+        }
+    </script>
+</body>
+</html>
+

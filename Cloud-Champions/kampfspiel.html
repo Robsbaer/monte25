@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kampfspiel - Battle Arena</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .health-bars {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+
+        .player-health {
+            flex: 1;
+        }
+
+        .player-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 1.2em;
+        }
+
+        .player1-name {
+            color: #e74c3c;
+        }
+
+        .player2-name {
+            color: #3498db;
+            text-align: right;
+        }
+
+        .health-bar-container {
+            width: 100%;
+            height: 30px;
+            background: #ddd;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 3px solid #333;
+            position: relative;
+        }
+
+        .health-bar {
+            height: 100%;
+            transition: width 0.3s ease;
+            border-radius: 12px;
+        }
+
+        .player1-health {
+            background: linear-gradient(90deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .player2-health {
+            background: linear-gradient(90deg, #3498db 0%, #2980b9 100%);
+        }
+
+        .health-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+            font-size: 0.9em;
+        }
+
+        .vs-text {
+            font-size: 2em;
+            font-weight: bold;
+            color: #f39c12;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        #gameCanvas {
+            border: 3px solid #333;
+            border-radius: 10px;
+            display: block;
+            width: 100%;
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 70%, #90EE90 100%);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            gap: 20px;
+        }
+
+        .control-panel {
+            flex: 1;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 10px;
+        }
+
+        .control-panel h3 {
+            margin-bottom: 10px;
+            color: #333;
+            text-align: center;
+        }
+
+        .player1-controls h3 {
+            color: #e74c3c;
+        }
+
+        .player2-controls h3 {
+            color: #3498db;
+        }
+
+        .control-panel p {
+            margin: 5px 0;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+        }
+
+        .game-over.show {
+            display: block;
+        }
+
+        .game-over h2 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .winner {
+            color: #f39c12;
+            font-size: 2em;
+            margin: 20px 0;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .round-info {
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .combo-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3em;
+            font-weight: bold;
+            color: #f39c12;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .combo-indicator.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>⚔️ Kampf Arena ⚔️</h1>
+        
+        <div class="round-info">
+            Runde <span id="round">1</span>
+        </div>
+
+        <div class="health-bars">
+            <div class="player-health">
+                <div class="player-name player1-name">🥊 Spieler 1</div>
+                <div class="health-bar-container">
+                    <div class="health-bar player1-health" id="player1Health" style="width: 100%;"></div>
+                    <div class="health-text"><span id="player1HealthText">100</span> / 100</div>
+                </div>
+            </div>
+            
+            <div class="vs-text">VS</div>
+            
+            <div class="player-health">
+                <div class="player-name player2-name">Spieler 2 🥋</div>
+                <div class="health-bar-container">
+                    <div class="health-bar player2-health" id="player2Health" style="width: 100%;"></div>
+                    <div class="health-text"><span id="player2HealthText">100</span> / 100</div>
+                </div>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="1160" height="400"></canvas>
+
+        <div class="controls">
+            <div class="control-panel player1-controls">
+                <h3>🥊 Spieler 1 Steuerung</h3>
+                <p>⬅️ <strong>A</strong> - Links bewegen</p>
+                <p>➡️ <strong>D</strong> - Rechts bewegen</p>
+                <p>⬆️ <strong>W</strong> - Springen</p>
+                <p>👊 <strong>C</strong> - Schlag</p>
+                <p>🦵 <strong>V</strong> - Tritt</p>
+                <p>💥 <strong>B</strong> - Spezialattacke</p>
+            </div>
+
+            <div class="control-panel player2-controls">
+                <h3>Spieler 2 Steuerung 🥋</h3>
+                <p>Links bewegen - <strong>◀</strong> ⬅️</p>
+                <p>Rechts bewegen - <strong>▶</strong> ➡️</p>
+                <p>Springen - <strong>▲</strong> ⬆️</p>
+                <p>Schlag - <strong>1</strong> 👊</p>
+                <p>Tritt - <strong>2</strong> 🦵</p>
+                <p>Spezialattacke - <strong>3</strong> 💥</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <h2>K.O.!</h2>
+        <div class="winner" id="winnerText">Spieler 1 gewinnt!</div>
+        <button id="restartBtn">Neue Runde</button>
+    </div>
+
+    <div class="combo-indicator" id="comboIndicator"></div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Spielzustand
+        let gameOver = false;
+        let round = 1;
+        const maxRounds = 3;
+        let player1Wins = 0;
+        let player2Wins = 0;
+
+        // Spieler-Klasse
+        class Fighter {
+            constructor(x, y, color, controls) {
+                this.x = x;
+                this.y = y;
+                this.width = 50;
+                this.height = 80;
+                this.color = color;
+                this.health = 100;
+                this.maxHealth = 100;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.speed = 5;
+                this.jumpPower = 15;
+                this.gravity = 0.6;
+                this.onGround = false;
+                this.controls = controls;
+                this.attacking = false;
+                this.attackCooldown = 0;
+                this.attackType = null;
+                this.facing = 'right';
+                this.specialEnergy = 100;
+                this.isBlocking = false;
+                this.hitStun = 0;
+                this.combo = 0;
+            }
+
+            draw() {
+                // Schatten
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.beginPath();
+                ctx.ellipse(this.x + this.width / 2, canvas.height - 50 + 10, this.width / 2, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Körper
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+
+                // Kopf
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width / 2, this.y - 10, 20, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Augen
+                ctx.fillStyle = '#000';
+                const eyeOffset = this.facing === 'right' ? 5 : -5;
+                ctx.fillRect(this.x + this.width / 2 - 8 + eyeOffset, this.y - 15, 5, 5);
+                ctx.fillRect(this.x + this.width / 2 + 3 + eyeOffset, this.y - 15, 5, 5);
+
+                // Arme
+                ctx.fillStyle = this.color;
+                if (this.attacking) {
+                    // Angriffsanimation
+                    const armExtend = this.facing === 'right' ? this.width : -30;
+                    ctx.fillRect(this.x + (this.facing === 'right' ? this.width : 0), this.y + 20, armExtend, 15);
+                    
+                    // Angriffseffekt
+                    if (this.attackType === 'punch') {
+                        ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
+                        ctx.beginPath();
+                        ctx.arc(
+                            this.x + (this.facing === 'right' ? this.width + 30 : -30),
+                            this.y + 27,
+                            15,
+                            0,
+                            Math.PI * 2
+                        );
+                        ctx.fill();
+                    } else if (this.attackType === 'kick') {
+                        ctx.fillStyle = 'rgba(255, 69, 0, 0.5)';
+                        ctx.fillRect(
+                            this.x + (this.facing === 'right' ? this.width : -40),
+                            this.y + 40,
+                            40,
+                            15
+                        );
+                    } else if (this.attackType === 'special') {
+                        // Spezialattacke - Energiewelle
+                        ctx.fillStyle = 'rgba(0, 191, 255, 0.7)';
+                        for (let i = 0; i < 3; i++) {
+                            ctx.beginPath();
+                            ctx.arc(
+                                this.x + (this.facing === 'right' ? this.width + 30 + i * 20 : -30 - i * 20),
+                                this.y + 40,
+                                20 - i * 5,
+                                0,
+                                Math.PI * 2
+                            );
+                            ctx.fill();
+                        }
+                    }
+                } else {
+                    ctx.fillRect(this.x - 10, this.y + 20, 15, 10);
+                    ctx.fillRect(this.x + this.width - 5, this.y + 20, 15, 10);
+                }
+
+                // Beine
+                ctx.fillRect(this.x + 5, this.y + this.height, 15, 20);
+                ctx.fillRect(this.x + this.width - 20, this.y + this.height, 15, 20);
+
+                // Gesundheitsbalken über dem Kämpfer
+                const healthBarWidth = this.width;
+                const healthBarHeight = 5;
+                const healthPercent = this.health / this.maxHealth;
+                
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(this.x, this.y - 30, healthBarWidth, healthBarHeight);
+                
+                ctx.fillStyle = healthPercent > 0.5 ? '#2ecc71' : healthPercent > 0.25 ? '#f39c12' : '#e74c3c';
+                ctx.fillRect(this.x, this.y - 30, healthBarWidth * healthPercent, healthBarHeight);
+
+                // Spezialenergie-Balken
+                const energyPercent = this.specialEnergy / 100;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.fillRect(this.x, this.y - 22, healthBarWidth, 3);
+                ctx.fillStyle = '#3498db';
+                ctx.fillRect(this.x, this.y - 22, healthBarWidth * energyPercent, 3);
+            }
+
+            update(keys, opponent) {
+                if (gameOver || this.hitStun > 0) {
+                    if (this.hitStun > 0) this.hitStun--;
+                    this.applyPhysics();
+                    return;
+                }
+
+                // Bewegung
+                if (keys[this.controls.left] && this.x > 0) {
+                    this.velocityX = -this.speed;
+                    this.facing = 'left';
+                }
+                if (keys[this.controls.right] && this.x < canvas.width - this.width) {
+                    this.velocityX = this.speed;
+                    this.facing = 'right';
+                }
+
+                // Automatische Ausrichtung zum Gegner
+                if (opponent.x > this.x) {
+                    this.facing = 'right';
+                } else {
+                    this.facing = 'left';
+                }
+
+                // Springen
+                if (keys[this.controls.jump] && this.onGround) {
+                    this.velocityY = -this.jumpPower;
+                    this.onGround = false;
+                }
+
+                // Angriffe
+                if (this.attackCooldown === 0) {
+                    if (keys[this.controls.punch]) {
+                        this.attack('punch', 8, 5, opponent);
+                    } else if (keys[this.controls.kick]) {
+                        this.attack('kick', 12, 10, opponent);
+                    } else if (keys[this.controls.special] && this.specialEnergy >= 30) {
+                        this.attack('special', 25, 20, opponent);
+                        this.specialEnergy -= 30;
+                    }
+                }
+
+                // Angriffsabklingzeit
+                if (this.attackCooldown > 0) {
+                    this.attackCooldown--;
+                    if (this.attackCooldown === 0) {
+                        this.attacking = false;
+                        this.attackType = null;
+                    }
+                }
+
+                // Spezialenergie regenerieren
+                if (this.specialEnergy < 100) {
+                    this.specialEnergy += 0.2;
+                }
+
+                this.applyPhysics();
+            }
+
+            applyPhysics() {
+                // Schwerkraft
+                this.velocityY += this.gravity;
+                this.y += this.velocityY;
+                this.x += this.velocityX;
+
+                // Boden-Kollision
+                const groundY = canvas.height - 50 - this.height - 20;
+                if (this.y >= groundY) {
+                    this.y = groundY;
+                    this.velocityY = 0;
+                    this.onGround = true;
+                } else {
+                    this.onGround = false;
+                }
+
+                // Reibung
+                this.velocityX *= 0.8;
+            }
+
+            attack(type, damage, cooldown, opponent) {
+                this.attacking = true;
+                this.attackType = type;
+                this.attackCooldown = cooldown;
+
+                // Berechne Angriffsreichweite
+                let hitRange = 60;
+                if (type === 'kick') hitRange = 70;
+                if (type === 'special') hitRange = 100;
+
+                // Prüfe Treffer
+                const distance = Math.abs(this.x - opponent.x);
+                const verticalDistance = Math.abs(this.y - opponent.y);
+                
+                const attacking_from_right = this.facing === 'right' && opponent.x > this.x;
+                const attacking_from_left = this.facing === 'left' && opponent.x < this.x;
+                
+                if (distance < hitRange && verticalDistance < 50 && (attacking_from_right || attacking_from_left)) {
+                    opponent.takeDamage(damage);
+                    this.combo++;
+                    showCombo(this.combo);
+                    
+                    // Rückstoß
+                    const knockback = this.facing === 'right' ? 10 : -10;
+                    opponent.velocityX = knockback;
+                    opponent.hitStun = 10;
+                } else {
+                    this.combo = 0;
+                }
+            }
+
+            takeDamage(damage) {
+                this.health -= damage;
+                if (this.health < 0) this.health = 0;
+                updateHealthBars();
+                
+                if (this.health === 0) {
+                    endRound();
+                }
+            }
+
+            reset(x) {
+                this.x = x;
+                this.y = canvas.height - 50 - this.height - 20;
+                this.health = 100;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.attacking = false;
+                this.attackCooldown = 0;
+                this.specialEnergy = 100;
+                this.combo = 0;
+                this.hitStun = 0;
+            }
+        }
+
+        // Spieler erstellen
+        const player1 = new Fighter(100, canvas.height - 50 - 80, '#e74c3c', {
+            left: 'a',
+            right: 'd',
+            jump: 'w',
+            punch: 'c',
+            kick: 'v',
+            special: 'b'
+        });
+
+        const player2 = new Fighter(canvas.width - 150, canvas.height - 50 - 80, '#3498db', {
+            left: 'ArrowLeft',
+            right: 'ArrowRight',
+            jump: 'ArrowUp',
+            punch: '1',
+            kick: '2',
+            special: '3'
+        });
+
+        // Tastatureingaben
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            keys[e.code] = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+            keys[e.code] = false;
+        });
+
+        // Hintergrund zeichnen
+        function drawBackground() {
+            // Himmel
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.7, '#E0F6FF');
+            gradient.addColorStop(1, '#90EE90');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Sonne
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(100, 80, 40, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Berge im Hintergrund
+            ctx.fillStyle = 'rgba(128, 128, 128, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height - 100);
+            ctx.lineTo(200, canvas.height - 250);
+            ctx.lineTo(400, canvas.height - 100);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(300, canvas.height - 100);
+            ctx.lineTo(500, canvas.height - 220);
+            ctx.lineTo(700, canvas.height - 100);
+            ctx.fill();
+
+            // Arena-Boden
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
+            // Boden-Details
+            ctx.fillStyle = '#654321';
+            for (let i = 0; i < canvas.width; i += 50) {
+                ctx.fillRect(i, canvas.height - 50, 40, 5);
+            }
+        }
+
+        // Gesundheitsbalken aktualisieren
+        function updateHealthBars() {
+            document.getElementById('player1Health').style.width = (player1.health / player1.maxHealth * 100) + '%';
+            document.getElementById('player1HealthText').textContent = Math.max(0, Math.round(player1.health));
+            
+            document.getElementById('player2Health').style.width = (player2.health / player2.maxHealth * 100) + '%';
+            document.getElementById('player2HealthText').textContent = Math.max(0, Math.round(player2.health));
+        }
+
+        // Combo anzeigen
+        function showCombo(combo) {
+            if (combo < 2) return;
+            
+            const comboIndicator = document.getElementById('comboIndicator');
+            comboIndicator.textContent = `${combo} COMBO!`;
+            comboIndicator.classList.add('show');
+            
+            setTimeout(() => {
+                comboIndicator.classList.remove('show');
+            }, 800);
+        }
+
+        // Runde beenden
+        function endRound() {
+            gameOver = true;
+            
+            let winner;
+            if (player1.health <= 0) {
+                winner = 'Spieler 2';
+                player2Wins++;
+            } else {
+                winner = 'Spieler 1';
+                player1Wins++;
+            }
+
+            // Prüfe ob jemand das Match gewonnen hat
+            if (player1Wins >= 2 || player2Wins >= 2) {
+                document.getElementById('winnerText').textContent = `${winner} gewinnt das Match! (${player1Wins}:${player2Wins})`;
+            } else {
+                document.getElementById('winnerText').textContent = `${winner} gewinnt Runde ${round}! (${player1Wins}:${player2Wins})`;
+            }
+            
+            document.getElementById('gameOver').classList.add('show');
+        }
+
+        // Neustart
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            if (player1Wins >= 2 || player2Wins >= 2) {
+                // Kompletter Neustart
+                round = 1;
+                player1Wins = 0;
+                player2Wins = 0;
+            } else {
+                // Nächste Runde
+                round++;
+            }
+            
+            document.getElementById('round').textContent = round;
+            document.getElementById('gameOver').classList.remove('show');
+            player1.reset(100);
+            player2.reset(canvas.width - 150);
+            updateHealthBars();
+            gameOver = false;
+        });
+
+        // Spiel-Loop
+        function gameLoop() {
+            drawBackground();
+            
+            player1.update(keys, player2);
+            player2.update(keys, player1);
+            
+            player1.draw();
+            player2.draw();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Spiel starten
+        gameLoop();
+    </script>
+</body>
+</html>
+

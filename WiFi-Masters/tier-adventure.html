@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦊 Tier-Adventure - Die große Rettungsmission 🌳</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+            font-size: 36px;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        canvas {
+            border: 4px solid #333;
+            border-radius: 12px;
+            display: block;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 60%, #90EE90 100%);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .info {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            gap: 20px;
+        }
+
+        .controls {
+            margin-top: 10px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .stat {
+            font-size: 18px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🦊 TIER-ADVENTURE - DIE GROẞE RETTUNGSMISSION 🌳</h1>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="900" height="600"></canvas>
+        <div class="info">
+            <div class="stat">Level: <span id="level">1</span></div>
+            <div class="stat">Leben: <span id="lives">❤️❤️❤️</span></div>
+            <div class="stat">Gerettete Tiere: <span id="rescued">0</span></div>
+            <div class="stat">Münzen: <span id="coins">0</span></div>
+        </div>
+        <div class="controls">
+            <p><strong>🎮 Steuerung:</strong> ← → Bewegen | ↑ / Leertaste: Springen | Rette alle Tiere und sammle Münzen! 🪙</p>
+            <p>⚠️ Vermeide gefährliche Tiere (🐍🦂) und Fallen!</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Spiel-Zustand
+        let gameState = 'playing'; // playing, paused, gameOver, levelComplete
+        let currentLevel = 1;
+        let lives = 3;
+        let rescued = 0;
+        let coins = 0;
+        let targetRescues = 5;
+
+        // Spieler (Fuchs)
+        const player = {
+            x: 100,
+            y: 400,
+            width: 40,
+            height: 40,
+            velocityX: 0,
+            velocityY: 0,
+            speed: 5,
+            jumpPower: 12,
+            grounded: false,
+            direction: 1, // 1 = rechts, -1 = links
+            invincible: false,
+            invincibleTime: 0
+        };
+
+        // Physik
+        const gravity = 0.5;
+        const friction = 0.85;
+
+        // Plattformen
+        let platforms = [];
+        
+        // Tiere (zu rettende und gefährliche)
+        let animals = [];
+        
+        // Münzen
+        let coinsList = [];
+        
+        // Partikel-Effekte
+        let particles = [];
+
+        // Tastatur
+        const keys = {};
+        let spacePressed = false;
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (e.key === ' ' || e.key === 'ArrowUp') {
+                if (!spacePressed && player.grounded) {
+                    player.velocityY = -player.jumpPower;
+                    player.grounded = false;
+                    spacePressed = true;
+                }
+                e.preventDefault();
+            }
+            if (e.key === 'r' || e.key === 'R') {
+                if (gameState === 'gameOver') {
+                    resetGame();
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+            if (e.key === ' ' || e.key === 'ArrowUp') {
+                spacePressed = false;
+            }
+        });
+
+        // Level-Definitionen
+        function initLevel(level) {
+            platforms = [];
+            animals = [];
+            coinsList = [];
+            rescued = 0;
+            targetRescues = 3 + level * 2;
+
+            // Boden
+            platforms.push({ x: 0, y: 550, width: canvas.width, height: 50, type: 'ground' });
+
+            // Level-spezifische Plattformen
+            if (level === 1) {
+                // Einfaches Level
+                platforms.push(
+                    { x: 200, y: 450, width: 100, height: 20, type: 'platform' },
+                    { x: 400, y: 380, width: 120, height: 20, type: 'platform' },
+                    { x: 600, y: 320, width: 100, height: 20, type: 'platform' },
+                    { x: 750, y: 420, width: 130, height: 20, type: 'platform' }
+                );
+
+                // Freundliche Tiere (zu retten)
+                animals.push(
+                    { x: 220, y: 410, type: 'rabbit', friendly: true, rescued: false, emoji: '🐰' },
+                    { x: 420, y: 340, type: 'squirrel', friendly: true, rescued: false, emoji: '🐿️' },
+                    { x: 620, y: 280, type: 'bird', friendly: true, rescued: false, emoji: '🐦' },
+                    { x: 770, y: 380, type: 'hedgehog', friendly: true, rescued: false, emoji: '🦔' },
+                    { x: 500, y: 510, type: 'mouse', friendly: true, rescued: false, emoji: '🐭' }
+                );
+
+                // Gefährliche Tiere
+                animals.push(
+                    { x: 350, y: 510, type: 'snake', friendly: false, direction: 1, speed: 1.5, emoji: '🐍', range: { min: 300, max: 500 } },
+                    { x: 700, y: 510, type: 'scorpion', friendly: false, direction: -1, speed: 1, emoji: '🦂', range: { min: 650, max: 800 } }
+                );
+
+                // Münzen
+                for (let i = 0; i < 10; i++) {
+                    coinsList.push({
+                        x: 150 + i * 70,
+                        y: 350 - Math.sin(i) * 100,
+                        collected: false,
+                        bounce: i * 0.5
+                    });
+                }
+            } else if (level === 2) {
+                // Mittelschweres Level
+                platforms.push(
+                    { x: 150, y: 480, width: 80, height: 20, type: 'platform' },
+                    { x: 280, y: 420, width: 70, height: 20, type: 'platform' },
+                    { x: 420, y: 360, width: 90, height: 20, type: 'platform' },
+                    { x: 570, y: 300, width: 80, height: 20, type: 'platform' },
+                    { x: 700, y: 400, width: 100, height: 20, type: 'platform' },
+                    { x: 250, y: 250, width: 120, height: 20, type: 'platform' }
+                );
+
+                animals.push(
+                    { x: 170, y: 440, type: 'rabbit', friendly: true, rescued: false, emoji: '🐰' },
+                    { x: 300, y: 380, type: 'bird', friendly: true, rescued: false, emoji: '🐦' },
+                    { x: 440, y: 320, type: 'squirrel', friendly: true, rescued: false, emoji: '🐿️' },
+                    { x: 590, y: 260, type: 'hedgehog', friendly: true, rescued: false, emoji: '🦔' },
+                    { x: 720, y: 360, type: 'mouse', friendly: true, rescued: false, emoji: '🐭' },
+                    { x: 270, y: 210, type: 'owl', friendly: true, rescued: false, emoji: '🦉' },
+                    { x: 800, y: 510, type: 'frog', friendly: true, rescued: false, emoji: '🐸' }
+                );
+
+                animals.push(
+                    { x: 400, y: 510, type: 'snake', friendly: false, direction: 1, speed: 2, emoji: '🐍', range: { min: 350, max: 550 } },
+                    { x: 600, y: 510, type: 'scorpion', friendly: false, direction: -1, speed: 1.5, emoji: '🦂', range: { min: 500, max: 700 } },
+                    { x: 200, y: 280, type: 'wasp', friendly: false, direction: 1, speed: 1, emoji: '🐝', range: { min: 200, max: 380 } }
+                );
+
+                for (let i = 0; i < 15; i++) {
+                    coinsList.push({
+                        x: 100 + i * 55,
+                        y: 250 + Math.cos(i * 0.5) * 150,
+                        collected: false,
+                        bounce: i * 0.3
+                    });
+                }
+            } else {
+                // Schweres Level (Level 3+)
+                platforms.push(
+                    { x: 120, y: 490, width: 70, height: 20, type: 'platform' },
+                    { x: 230, y: 440, width: 60, height: 20, type: 'platform' },
+                    { x: 340, y: 380, width: 70, height: 20, type: 'platform' },
+                    { x: 450, y: 320, width: 65, height: 20, type: 'platform' },
+                    { x: 570, y: 380, width: 70, height: 20, type: 'platform' },
+                    { x: 680, y: 440, width: 60, height: 20, type: 'platform' },
+                    { x: 790, y: 380, width: 70, height: 20, type: 'platform' },
+                    { x: 400, y: 200, width: 100, height: 20, type: 'platform' }
+                );
+
+                const rescueCount = 3 + level * 2;
+                for (let i = 0; i < rescueCount; i++) {
+                    const platform = platforms[1 + (i % (platforms.length - 1))];
+                    const emojis = ['🐰', '🐿️', '🐦', '🦔', '🐭', '🦉', '🐸', '🦆', '🐇'];
+                    animals.push({
+                        x: platform.x + 10,
+                        y: platform.y - 40,
+                        type: 'animal' + i,
+                        friendly: true,
+                        rescued: false,
+                        emoji: emojis[i % emojis.length]
+                    });
+                }
+
+                const dangerCount = 2 + level;
+                for (let i = 0; i < dangerCount; i++) {
+                    const dangerEmojis = ['🐍', '🦂', '🐝'];
+                    animals.push({
+                        x: 200 + i * 150,
+                        y: 510,
+                        type: 'danger' + i,
+                        friendly: false,
+                        direction: i % 2 === 0 ? 1 : -1,
+                        speed: 1.5 + level * 0.3,
+                        emoji: dangerEmojis[i % dangerEmojis.length],
+                        range: { min: 150 + i * 150, max: 350 + i * 150 }
+                    });
+                }
+
+                for (let i = 0; i < 20; i++) {
+                    coinsList.push({
+                        x: 80 + i * 42,
+                        y: 200 + Math.sin(i * 0.7) * 200,
+                        collected: false,
+                        bounce: i * 0.2
+                    });
+                }
+            }
+
+            // Spieler zurücksetzen
+            player.x = 100;
+            player.y = 400;
+            player.velocityX = 0;
+            player.velocityY = 0;
+            player.grounded = false;
+            player.invincible = false;
+        }
+
+        // Spieler zeichnen (Fuchs)
+        function drawPlayer() {
+            ctx.save();
+            
+            // Blinken wenn unverwundbar
+            if (player.invincible && Math.floor(Date.now() / 100) % 2 === 0) {
+                ctx.globalAlpha = 0.5;
+            }
+
+            // Spieler spiegeln je nach Richtung
+            if (player.direction === -1) {
+                ctx.scale(-1, 1);
+                ctx.translate(-player.x * 2 - player.width, 0);
+            }
+
+            // Körper (Fuchs)
+            ctx.fillStyle = '#FF8C00';
+            ctx.fillRect(player.x, player.y + 10, player.width, player.height - 10);
+
+            // Kopf
+            ctx.fillStyle = '#FF8C00';
+            ctx.beginPath();
+            ctx.arc(player.x + player.width / 2, player.y + 12, 15, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ohren
+            ctx.fillStyle = '#FF6347';
+            ctx.beginPath();
+            ctx.moveTo(player.x + 10, player.y + 5);
+            ctx.lineTo(player.x + 15, player.y - 5);
+            ctx.lineTo(player.x + 20, player.y + 5);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(player.x + 25, player.y + 5);
+            ctx.lineTo(player.x + 30, player.y - 5);
+            ctx.lineTo(player.x + 35, player.y + 5);
+            ctx.fill();
+
+            // Augen
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(player.x + 15, player.y + 10, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(player.x + 25, player.y + 10, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Schwanz
+            ctx.fillStyle = '#FF8C00';
+            ctx.beginPath();
+            ctx.ellipse(player.x + (player.direction === 1 ? 5 : 35), player.y + 35, 8, 12, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Weiße Schwanzspitze
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.arc(player.x + (player.direction === 1 ? 5 : 35), player.y + 45, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Plattformen zeichnen
+        function drawPlatforms() {
+            platforms.forEach(platform => {
+                if (platform.type === 'ground') {
+                    // Boden
+                    const gradient = ctx.createLinearGradient(0, platform.y, 0, platform.y + platform.height);
+                    gradient.addColorStop(0, '#8B7355');
+                    gradient.addColorStop(1, '#654321');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+
+                    // Gras
+                    ctx.fillStyle = '#228B22';
+                    ctx.fillRect(platform.x, platform.y - 5, platform.width, 5);
+
+                    // Grashalme
+                    ctx.strokeStyle = '#32CD32';
+                    ctx.lineWidth = 2;
+                    for (let i = 0; i < platform.width; i += 15) {
+                        ctx.beginPath();
+                        ctx.moveTo(platform.x + i, platform.y);
+                        ctx.lineTo(platform.x + i + Math.sin(Date.now() * 0.005 + i) * 2, platform.y - 10);
+                        ctx.stroke();
+                    }
+                } else {
+                    // Holz-Plattform
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    ctx.strokeStyle = '#654321';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+
+                    // Holzmaserung
+                    ctx.strokeStyle = '#A0522D';
+                    for (let i = 0; i < 3; i++) {
+                        const y = platform.y + 5 + i * 5;
+                        ctx.beginPath();
+                        ctx.moveTo(platform.x, y);
+                        ctx.lineTo(platform.x + platform.width, y);
+                        ctx.stroke();
+                    }
+                }
+            });
+        }
+
+        // Tiere zeichnen
+        function drawAnimals() {
+            animals.forEach(animal => {
+                if (animal.rescued) return;
+
+                ctx.save();
+                ctx.font = '32px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // Schatten
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.ellipse(animal.x + 16, animal.y + 40, 15, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Tier
+                if (animal.friendly) {
+                    // Leuchteffekt für zu rettende Tiere
+                    const pulse = Math.sin(Date.now() * 0.005 + animal.x) * 0.3 + 0.7;
+                    ctx.globalAlpha = pulse;
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(animal.x + 16, animal.y + 16, 25, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                }
+
+                ctx.fillText(animal.emoji, animal.x + 16, animal.y + 16);
+                ctx.restore();
+            });
+        }
+
+        // Münzen zeichnen
+        function drawCoins() {
+            const time = Date.now() * 0.005;
+            coinsList.forEach(coin => {
+                if (coin.collected) return;
+
+                const bounce = Math.sin(time + coin.bounce) * 5;
+                
+                ctx.save();
+                ctx.fillStyle = '#FFD700';
+                ctx.strokeStyle = '#FFA500';
+                ctx.lineWidth = 2;
+                
+                ctx.beginPath();
+                ctx.arc(coin.x, coin.y + bounce, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Münzsymbol
+                ctx.fillStyle = '#FFA500';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('$', coin.x, coin.y + bounce);
+                
+                ctx.restore();
+            });
+        }
+
+        // Partikel zeichnen
+        function drawParticles() {
+            particles.forEach((particle, index) => {
+                particle.life--;
+                particle.y += particle.velocityY;
+                particle.x += particle.velocityX;
+                particle.velocityY += 0.1;
+
+                if (particle.life <= 0) {
+                    particles.splice(index, 1);
+                    return;
+                }
+
+                ctx.save();
+                ctx.globalAlpha = particle.life / 30;
+                ctx.fillStyle = particle.color;
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        // Partikel erstellen
+        function createParticles(x, y, color, count = 10) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    velocityX: (Math.random() - 0.5) * 4,
+                    velocityY: (Math.random() - 0.5) * 4 - 2,
+                    size: Math.random() * 4 + 2,
+                    color: color,
+                    life: 30
+                });
+            }
+        }
+
+        // Hintergrund zeichnen
+        function drawBackground() {
+            // Himmel
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.7, '#E0F6FF');
+            gradient.addColorStop(1, '#90EE90');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Wolken
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            const time = Date.now() * 0.0001;
+            for (let i = 0; i < 5; i++) {
+                const x = (time * 50 + i * 200) % (canvas.width + 100);
+                const y = 50 + i * 70;
+                ctx.beginPath();
+                ctx.arc(x, y, 30, 0, Math.PI * 2);
+                ctx.arc(x + 30, y, 40, 0, Math.PI * 2);
+                ctx.arc(x + 60, y, 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Bäume im Hintergrund
+            ctx.fillStyle = '#2F4F2F';
+            for (let i = 0; i < 8; i++) {
+                const x = i * 120 + 50;
+                const y = 480;
+                // Stamm
+                ctx.fillRect(x, y, 15, 70);
+                // Krone
+                ctx.fillStyle = '#228B22';
+                ctx.beginPath();
+                ctx.arc(x + 7, y, 30, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#2F4F2F';
+            }
+        }
+
+        // Kollisionsprüfung
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+
+        // Spieler aktualisieren
+        function updatePlayer() {
+            // Horizontale Bewegung
+            if (keys['ArrowLeft'] || keys['a']) {
+                player.velocityX = -player.speed;
+                player.direction = -1;
+            } else if (keys['ArrowRight'] || keys['d']) {
+                player.velocityX = player.speed;
+                player.direction = 1;
+            } else {
+                player.velocityX *= friction;
+            }
+
+            // Schwerkraft
+            player.velocityY += gravity;
+
+            // Terminal velocity
+            if (player.velocityY > 15) player.velocityY = 15;
+
+            // Position aktualisieren
+            player.x += player.velocityX;
+            player.y += player.velocityY;
+
+            // Bildschirm-Grenzen
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) {
+                player.x = canvas.width - player.width;
+            }
+
+            // Plattform-Kollision
+            player.grounded = false;
+            platforms.forEach(platform => {
+                if (checkCollision(player, platform)) {
+                    // Von oben auf Plattform landen
+                    if (player.velocityY > 0 && 
+                        player.y + player.height - player.velocityY <= platform.y + 5) {
+                        player.y = platform.y - player.height;
+                        player.velocityY = 0;
+                        player.grounded = true;
+                    }
+                    // Kopf stößt an Plattform
+                    else if (player.velocityY < 0 && 
+                             player.y - player.velocityY >= platform.y + platform.height) {
+                        player.y = platform.y + platform.height;
+                        player.velocityY = 0;
+                    }
+                    // Seitliche Kollision
+                    else {
+                        if (player.velocityX > 0) {
+                            player.x = platform.x - player.width;
+                        } else if (player.velocityX < 0) {
+                            player.x = platform.x + platform.width;
+                        }
+                        player.velocityX = 0;
+                    }
+                }
+            });
+
+            // Aus dem Bildschirm gefallen
+            if (player.y > canvas.height) {
+                hitPlayer();
+            }
+
+            // Unverwundbarkeit
+            if (player.invincible) {
+                player.invincibleTime--;
+                if (player.invincibleTime <= 0) {
+                    player.invincible = false;
+                }
+            }
+        }
+
+        // Tiere aktualisieren
+        function updateAnimals() {
+            animals.forEach(animal => {
+                if (animal.rescued) return;
+
+                // Gefährliche Tiere bewegen sich
+                if (!animal.friendly && animal.range) {
+                    animal.x += animal.speed * animal.direction;
+
+                    // Umkehren an Grenzen
+                    if (animal.x <= animal.range.min || animal.x >= animal.range.max) {
+                        animal.direction *= -1;
+                    }
+
+                    // Kollision mit Spieler
+                    if (!player.invincible && checkCollision(player, {
+                        x: animal.x,
+                        y: animal.y,
+                        width: 32,
+                        height: 32
+                    })) {
+                        hitPlayer();
+                    }
+                }
+
+                // Freundliche Tiere retten
+                if (animal.friendly && checkCollision(player, {
+                    x: animal.x,
+                    y: animal.y,
+                    width: 32,
+                    height: 32
+                })) {
+                    animal.rescued = true;
+                    rescued++;
+                    createParticles(animal.x + 16, animal.y + 16, '#FFD700', 15);
+                    updateUI();
+
+                    // Level abgeschlossen?
+                    if (rescued >= targetRescues) {
+                        levelComplete();
+                    }
+                }
+            });
+        }
+
+        // Münzen aktualisieren
+        function updateCoins() {
+            coinsList.forEach(coin => {
+                if (coin.collected) return;
+
+                if (checkCollision(player, {
+                    x: coin.x - 12,
+                    y: coin.y - 12,
+                    width: 24,
+                    height: 24
+                })) {
+                    coin.collected = true;
+                    coins++;
+                    createParticles(coin.x, coin.y, '#FFD700', 8);
+                    updateUI();
+                }
+            });
+        }
+
+        // Spieler getroffen
+        function hitPlayer() {
+            if (player.invincible) return;
+
+            lives--;
+            player.invincible = true;
+            player.invincibleTime = 120;
+            createParticles(player.x + player.width / 2, player.y + player.height / 2, '#FF0000', 20);
+            updateUI();
+
+            if (lives <= 0) {
+                gameOver();
+            } else {
+                // Spieler zurücksetzen
+                player.x = 100;
+                player.y = 400;
+                player.velocityX = 0;
+                player.velocityY = 0;
+            }
+        }
+
+        // Level abgeschlossen
+        function levelComplete() {
+            gameState = 'levelComplete';
+        }
+
+        // Game Over
+        function gameOver() {
+            gameState = 'gameOver';
+        }
+
+        // Spiel zurücksetzen
+        function resetGame() {
+            currentLevel = 1;
+            lives = 3;
+            coins = 0;
+            rescued = 0;
+            gameState = 'playing';
+            initLevel(currentLevel);
+            updateUI();
+        }
+
+        // Nächstes Level
+        function nextLevel() {
+            currentLevel++;
+            lives = Math.min(lives + 1, 5); // Bonus-Leben
+            gameState = 'playing';
+            initLevel(currentLevel);
+            updateUI();
+        }
+
+        // UI aktualisieren
+        function updateUI() {
+            document.getElementById('level').textContent = currentLevel;
+            document.getElementById('rescued').textContent = rescued + ' / ' + targetRescues;
+            document.getElementById('coins').textContent = coins;
+            
+            let heartsDisplay = '';
+            for (let i = 0; i < lives; i++) {
+                heartsDisplay += '❤️';
+            }
+            document.getElementById('lives').textContent = heartsDisplay || '💀';
+        }
+
+        // Level Complete Bildschirm
+        function drawLevelComplete() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 56px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('🎉 LEVEL GESCHAFFT! 🎉', canvas.width / 2, canvas.height / 2 - 60);
+
+            ctx.fillStyle = '#51CF66';
+            ctx.font = 'bold 32px Arial';
+            ctx.fillText('Alle Tiere gerettet!', canvas.width / 2, canvas.height / 2);
+
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText(`Münzen: ${coins} 🪙`, canvas.width / 2, canvas.height / 2 + 50);
+            ctx.fillText('Drücke LEERTASTE für nächstes Level', canvas.width / 2, canvas.height / 2 + 90);
+
+            // Warten auf Leertaste
+            if (keys[' '] && !spacePressed) {
+                spacePressed = true;
+                setTimeout(() => {
+                    nextLevel();
+                }, 100);
+            }
+        }
+
+        // Game Over Bildschirm
+        function drawGameOver() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#FF6B6B';
+            ctx.font = 'bold 56px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('💀 GAME OVER 💀', canvas.width / 2, canvas.height / 2 - 60);
+
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 28px Arial';
+            ctx.fillText(`Level erreicht: ${currentLevel}`, canvas.width / 2, canvas.height / 2);
+            ctx.fillText(`Gerettete Tiere: ${rescued}`, canvas.width / 2, canvas.height / 2 + 40);
+            ctx.fillText(`Münzen: ${coins} 🪙`, canvas.width / 2, canvas.height / 2 + 80);
+            
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 24px Arial';
+            ctx.fillText('Drücke R zum Neustarten', canvas.width / 2, canvas.height / 2 + 130);
+        }
+
+        // Spiel-Loop
+        function gameLoop() {
+            // Canvas leeren
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Hintergrund
+            drawBackground();
+
+            if (gameState === 'playing') {
+                // Spiellogik
+                updatePlayer();
+                updateAnimals();
+                updateCoins();
+
+                // Zeichnen
+                drawPlatforms();
+                drawCoins();
+                drawAnimals();
+                drawPlayer();
+                drawParticles();
+            } else if (gameState === 'levelComplete') {
+                // Zeichnen
+                drawPlatforms();
+                drawCoins();
+                drawAnimals();
+                drawPlayer();
+                drawParticles();
+                drawLevelComplete();
+            } else if (gameState === 'gameOver') {
+                // Zeichnen
+                drawPlatforms();
+                drawCoins();
+                drawAnimals();
+                drawPlayer();
+                drawGameOver();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Spiel starten
+        initLevel(currentLevel);
+        updateUI();
+        gameLoop();
+    </script>
+</body>
+</html>
+

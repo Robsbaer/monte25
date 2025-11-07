@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bauspiel - Baue deine Welt</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            max-width: 1000px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #gameCanvas {
+            border: 3px solid #333;
+            border-radius: 10px;
+            display: block;
+            background: linear-gradient(180deg, #87CEEB 0%, #B0E0E6 50%, #90EE90 100%);
+            cursor: crosshair;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .control-section {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .control-section h3 {
+            color: #1e3c72;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .control-section p {
+            margin: 5px 0;
+            font-size: 0.95em;
+            color: #555;
+        }
+
+        .block-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .block-btn {
+            width: 60px;
+            height: 60px;
+            border: 3px solid #333;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-size: 0.8em;
+            text-align: center;
+            padding: 5px;
+        }
+
+        .block-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .block-btn.active {
+            border-color: #FFD700;
+            border-width: 4px;
+            box-shadow: 0 0 15px #FFD700;
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding: 15px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 10px;
+            color: white;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .mode-indicator {
+            text-align: center;
+            margin-top: 10px;
+            padding: 10px;
+            background: #FFD700;
+            border-radius: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🏗️ Bauspiel - Baue deine Welt 🏗️</h1>
+        
+        <canvas id="gameCanvas" width="960" height="640"></canvas>
+        
+        <div class="mode-indicator" id="modeIndicator">
+            Baumodus: Klicke, um Blöcke zu platzieren
+        </div>
+
+        <div class="block-selector">
+            <div class="block-btn active" data-block="dirt" style="background: #8B4513;" title="Erde">
+                🟫<br>Erde
+            </div>
+            <div class="block-btn" data-block="stone" style="background: #808080;" title="Stein">
+                ⬜<br>Stein
+            </div>
+            <div class="block-btn" data-block="wood" style="background: #DEB887;" title="Holz">
+                🟨<br>Holz
+            </div>
+            <div class="block-btn" data-block="brick" style="background: #B22222;" title="Ziegel">
+                🟥<br>Ziegel
+            </div>
+            <div class="block-btn" data-block="glass" style="background: rgba(173, 216, 230, 0.6);" title="Glas">
+                💎<br>Glas
+            </div>
+            <div class="block-btn" data-block="gold" style="background: #FFD700;" title="Gold">
+                ✨<br>Gold
+            </div>
+            <div class="block-btn" data-block="eraser" style="background: white; color: red;" title="Radiergummi">
+                ❌<br>Löschen
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-section">
+                <h3>🎮 Steuerung Spieler</h3>
+                <p>⬅️ A / Pfeil Links - Nach links</p>
+                <p>➡️ D / Pfeil Rechts - Nach rechts</p>
+                <p>⬆️ W / Leertaste - Springen</p>
+                <p>🔽 S / Pfeil Runter - Ducken</p>
+            </div>
+
+            <div class="control-section">
+                <h3>🏗️ Bauen & Abbauen</h3>
+                <p>🖱️ Linksklick - Block platzieren</p>
+                <p>🖱️ Rechtsklick - Block entfernen</p>
+                <p>🎨 Blocktyp - Oben auswählen</p>
+                <p>📦 Baue Treppen, Häuser, Brücken!</p>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <div>📦 Platzierte Blöcke: <span id="blockCount">0</span></div>
+            <div>🎨 Aktueller Block: <span id="currentBlock">Erde</span></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Grid-System
+        const BLOCK_SIZE = 32;
+        const GRID_WIDTH = canvas.width / BLOCK_SIZE;
+        const GRID_HEIGHT = canvas.height / BLOCK_SIZE;
+
+        // Spielvariablen
+        let keys = {};
+        let blocks = {};
+        let selectedBlock = 'dirt';
+        let blockCount = 0;
+
+        // Blocktypen
+        const blockTypes = {
+            dirt: { color: '#8B4513', name: 'Erde', solid: true },
+            stone: { color: '#808080', name: 'Stein', solid: true },
+            wood: { color: '#DEB887', name: 'Holz', solid: true },
+            brick: { color: '#B22222', name: 'Ziegel', solid: true },
+            glass: { color: 'rgba(173, 216, 230, 0.6)', name: 'Glas', solid: true },
+            gold: { color: '#FFD700', name: 'Gold', solid: true }
+        };
+
+        // Spieler (Männchen)
+        const player = {
+            x: 5 * BLOCK_SIZE,
+            y: 5 * BLOCK_SIZE,
+            width: 24,
+            height: 48,
+            velocityX: 0,
+            velocityY: 0,
+            speed: 4,
+            jumpPower: 12,
+            onGround: false,
+            ducking: false,
+            facing: 1, // 1 = rechts, -1 = links
+            walkCycle: 0
+        };
+
+        // Physik
+        const gravity = 0.5;
+        const friction = 0.85;
+        const maxVelocityY = 15;
+
+        // Initialisiere Boden
+        function initWorld() {
+            // Basis-Boden
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                setBlock(x, GRID_HEIGHT - 1, 'dirt');
+                setBlock(x, GRID_HEIGHT - 2, 'stone');
+            }
+            
+            // Ein paar Startplattformen
+            for (let x = 8; x < 12; x++) {
+                setBlock(x, 15, 'wood');
+            }
+            
+            for (let x = 15; x < 20; x++) {
+                setBlock(x, 12, 'brick');
+            }
+            
+            updateBlockCount();
+        }
+
+        // Block setzen
+        function setBlock(gridX, gridY, type) {
+            if (gridX >= 0 && gridX < GRID_WIDTH && gridY >= 0 && gridY < GRID_HEIGHT) {
+                const key = `${gridX},${gridY}`;
+                blocks[key] = type;
+            }
+        }
+
+        // Block entfernen
+        function removeBlock(gridX, gridY) {
+            const key = `${gridX},${gridY}`;
+            if (blocks[key]) {
+                delete blocks[key];
+            }
+        }
+
+        // Block abfragen
+        function getBlock(gridX, gridY) {
+            const key = `${gridX},${gridY}`;
+            return blocks[key] || null;
+        }
+
+        // Block-Anzahl aktualisieren
+        function updateBlockCount() {
+            blockCount = Object.keys(blocks).length;
+            document.getElementById('blockCount').textContent = blockCount;
+        }
+
+        // Maus-Events
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const gridX = Math.floor(x / BLOCK_SIZE);
+            const gridY = Math.floor(y / BLOCK_SIZE);
+
+            if (selectedBlock === 'eraser') {
+                removeBlock(gridX, gridY);
+            } else {
+                // Prüfe ob Spieler nicht auf dieser Position ist
+                const blockX = gridX * BLOCK_SIZE;
+                const blockY = gridY * BLOCK_SIZE;
+                
+                const collision = !(player.x + player.width <= blockX ||
+                                   player.x >= blockX + BLOCK_SIZE ||
+                                   player.y + player.height <= blockY ||
+                                   player.y >= blockY + BLOCK_SIZE);
+                
+                if (!collision) {
+                    setBlock(gridX, gridY, selectedBlock);
+                }
+            }
+            updateBlockCount();
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const gridX = Math.floor(x / BLOCK_SIZE);
+            const gridY = Math.floor(y / BLOCK_SIZE);
+            
+            removeBlock(gridX, gridY);
+            updateBlockCount();
+        });
+
+        // Block-Auswahl
+        document.querySelectorAll('.block-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.block-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                selectedBlock = btn.dataset.block;
+                const blockName = selectedBlock === 'eraser' ? 'Radiergummi' : blockTypes[selectedBlock].name;
+                document.getElementById('currentBlock').textContent = blockName;
+                
+                const mode = selectedBlock === 'eraser' ? 'Abbruchmodus' : 'Baumodus';
+                document.getElementById('modeIndicator').textContent = 
+                    `${mode}: ${selectedBlock === 'eraser' ? 'Klicke auf Blöcke zum Entfernen' : 'Klicke, um ' + blockName + ' zu platzieren'}`;
+            });
+        });
+
+        // Tastatur
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            
+            if ((e.key === 'w' || e.key === 'W' || e.key === ' ' || e.key === 'ArrowUp') && player.onGround) {
+                player.velocityY = -player.jumpPower;
+                player.onGround = false;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        // Spieler-Update
+        function updatePlayer() {
+            // Horizontal bewegen
+            if (keys['a'] || keys['arrowleft']) {
+                player.velocityX = -player.speed;
+                player.facing = -1;
+                player.walkCycle += 0.2;
+            } else if (keys['d'] || keys['arrowright']) {
+                player.velocityX = player.speed;
+                player.facing = 1;
+                player.walkCycle += 0.2;
+            } else {
+                player.velocityX *= friction;
+                if (Math.abs(player.velocityX) < 0.1) {
+                    player.velocityX = 0;
+                    player.walkCycle = 0;
+                }
+            }
+
+            // Ducken
+            player.ducking = keys['s'] || keys['arrowdown'];
+
+            // Gravitation
+            player.velocityY += gravity;
+            if (player.velocityY > maxVelocityY) {
+                player.velocityY = maxVelocityY;
+            }
+
+            // Position aktualisieren
+            player.x += player.velocityX;
+            player.y += player.velocityY;
+
+            // Bildschirm-Grenzen
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) {
+                player.x = canvas.width - player.width;
+            }
+
+            // Kollision mit Blöcken
+            player.onGround = false;
+            checkBlockCollisions();
+        }
+
+        // Block-Kollisionen
+        function checkBlockCollisions() {
+            const playerGridLeft = Math.floor(player.x / BLOCK_SIZE);
+            const playerGridRight = Math.floor((player.x + player.width) / BLOCK_SIZE);
+            const playerGridTop = Math.floor(player.y / BLOCK_SIZE);
+            const playerGridBottom = Math.floor((player.y + player.height) / BLOCK_SIZE);
+
+            // Prüfe Blöcke in der Nähe
+            for (let gridY = Math.max(0, playerGridTop - 1); gridY <= Math.min(GRID_HEIGHT - 1, playerGridBottom + 1); gridY++) {
+                for (let gridX = Math.max(0, playerGridLeft - 1); gridX <= Math.min(GRID_WIDTH - 1, playerGridRight + 1); gridX++) {
+                    const block = getBlock(gridX, gridY);
+                    if (block && blockTypes[block].solid) {
+                        const blockLeft = gridX * BLOCK_SIZE;
+                        const blockRight = blockLeft + BLOCK_SIZE;
+                        const blockTop = gridY * BLOCK_SIZE;
+                        const blockBottom = blockTop + BLOCK_SIZE;
+
+                        // Kollisionsprüfung
+                        if (player.x < blockRight &&
+                            player.x + player.width > blockLeft &&
+                            player.y < blockBottom &&
+                            player.y + player.height > blockTop) {
+                            
+                            // Von oben auf Block fallen
+                            if (player.velocityY > 0 && player.y + player.height - player.velocityY <= blockTop) {
+                                player.y = blockTop - player.height;
+                                player.velocityY = 0;
+                                player.onGround = true;
+                            }
+                            // Von unten gegen Block springen
+                            else if (player.velocityY < 0 && player.y - player.velocityY >= blockBottom) {
+                                player.y = blockBottom;
+                                player.velocityY = 0;
+                            }
+                            // Seitliche Kollision von links
+                            else if (player.velocityX > 0 && player.x + player.width - player.velocityX <= blockLeft) {
+                                player.x = blockLeft - player.width;
+                                player.velocityX = 0;
+                            }
+                            // Seitliche Kollision von rechts
+                            else if (player.velocityX < 0 && player.x - player.velocityX >= blockRight) {
+                                player.x = blockRight;
+                                player.velocityX = 0;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Aus dem Bildschirm gefallen
+            if (player.y > canvas.height) {
+                player.x = 5 * BLOCK_SIZE;
+                player.y = 5 * BLOCK_SIZE;
+                player.velocityX = 0;
+                player.velocityY = 0;
+            }
+        }
+
+        // Zeichnen
+        function draw() {
+            // Hintergrund
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.5, '#B0E0E6');
+            gradient.addColorStop(1, '#90EE90');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Wolken
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.beginPath();
+            ctx.arc(100, 80, 30, 0, Math.PI * 2);
+            ctx.arc(130, 80, 40, 0, Math.PI * 2);
+            ctx.arc(160, 80, 30, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(400, 120, 35, 0, Math.PI * 2);
+            ctx.arc(435, 120, 45, 0, Math.PI * 2);
+            ctx.arc(475, 120, 35, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(700, 100, 40, 0, Math.PI * 2);
+            ctx.arc(740, 100, 50, 0, Math.PI * 2);
+            ctx.arc(785, 100, 40, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Grid-Linien (optional)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += BLOCK_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += BLOCK_SIZE) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            // Blöcke zeichnen
+            for (const [key, type] of Object.entries(blocks)) {
+                const [gridX, gridY] = key.split(',').map(Number);
+                const x = gridX * BLOCK_SIZE;
+                const y = gridY * BLOCK_SIZE;
+                
+                ctx.fillStyle = blockTypes[type].color;
+                ctx.fillRect(x, y, BLOCK_SIZE, BLOCK_SIZE);
+                
+                // Block-Rand
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x, y, BLOCK_SIZE, BLOCK_SIZE);
+                
+                // Block-Details
+                if (type === 'brick') {
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y + BLOCK_SIZE / 2);
+                    ctx.lineTo(x + BLOCK_SIZE, y + BLOCK_SIZE / 2);
+                    ctx.stroke();
+                } else if (type === 'wood') {
+                    ctx.strokeStyle = 'rgba(101, 67, 33, 0.3)';
+                    ctx.lineWidth = 2;
+                    for (let i = 0; i < 3; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, y + i * 10);
+                        ctx.lineTo(x + BLOCK_SIZE, y + i * 10);
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Spieler (Strichmännchen) zeichnen
+            drawPlayer();
+        }
+
+        // Spieler-Zeichnen (animiertes Männchen)
+        function drawPlayer() {
+            const px = player.x + player.width / 2;
+            const py = player.y;
+            const height = player.ducking ? player.height * 0.7 : player.height;
+
+            ctx.save();
+
+            // Körper
+            ctx.strokeStyle = '#FF6B6B';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Kopf
+            ctx.fillStyle = '#FFD93D';
+            ctx.beginPath();
+            ctx.arc(px, py + 8, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Augen
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(px - 3, py + 7, 1.5, 0, Math.PI * 2);
+            ctx.arc(px + 3, py + 7, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Lächeln
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(px, py + 8, 4, 0.2 * Math.PI, 0.8 * Math.PI);
+            ctx.stroke();
+
+            // Körper-Linie
+            ctx.strokeStyle = '#FF6B6B';
+            ctx.lineWidth = 3;
+            const bodyLength = player.ducking ? 15 : 20;
+            ctx.beginPath();
+            ctx.moveTo(px, py + 16);
+            ctx.lineTo(px, py + 16 + bodyLength);
+            ctx.stroke();
+
+            // Arme
+            const armY = py + 20;
+            const armSwing = player.onGround && Math.abs(player.velocityX) > 0.1 ? 
+                            Math.sin(player.walkCycle) * 8 : 0;
+            
+            ctx.beginPath();
+            ctx.moveTo(px, armY);
+            ctx.lineTo(px - 8 * player.facing, armY + 10 + armSwing);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(px, armY);
+            ctx.lineTo(px + 8 * player.facing, armY + 10 - armSwing);
+            ctx.stroke();
+
+            // Beine
+            const legY = py + 16 + bodyLength;
+            const legSpread = player.ducking ? 15 : 8;
+            const legSwing = player.onGround && Math.abs(player.velocityX) > 0.1 ? 
+                            Math.sin(player.walkCycle) * 10 : 0;
+            
+            // Linkes Bein
+            ctx.beginPath();
+            ctx.moveTo(px, legY);
+            ctx.lineTo(px - legSpread, legY + 12 + legSwing);
+            ctx.stroke();
+            
+            // Rechtes Bein
+            ctx.beginPath();
+            ctx.moveTo(px, legY);
+            ctx.lineTo(px + legSpread, legY + 12 - legSwing);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Spiel-Loop
+        function gameLoop() {
+            updatePlayer();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialisierung
+        initWorld();
+        gameLoop();
+    </script>
+</body>
+</html>
+

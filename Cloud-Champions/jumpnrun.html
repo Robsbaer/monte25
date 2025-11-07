@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jump'n'Run Spiel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #gameCanvas {
+            border: 3px solid #333;
+            border-radius: 10px;
+            display: block;
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            color: white;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .controls {
+            text-align: center;
+            margin-top: 15px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            color: #333;
+        }
+
+        .controls h3 {
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .controls p {
+            margin: 5px 0;
+            font-size: 0.95em;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1em;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px 5px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        #gameOver, #victory {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            z-index: 1000;
+        }
+
+        #gameOver h2 {
+            color: #e74c3c;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        #victory h2 {
+            color: #27ae60;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎮 Jump'n'Run Abenteuer 🎮</h1>
+        
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div class="info-panel">
+            <div>❤️ Leben: <span id="lives">3</span></div>
+            <div>⭐ Punkte: <span id="score">0</span></div>
+            <div>🏆 Level: <span id="level">1</span></div>
+        </div>
+
+        <div class="controls">
+            <h3>🎮 Steuerung</h3>
+            <p>⬅️ A oder Pfeil Links - Nach links bewegen</p>
+            <p>➡️ D oder Pfeil Rechts - Nach rechts bewegen</p>
+            <p>⬆️ W, Pfeil Hoch oder Leertaste - Springen</p>
+            <p>🔄 R - Neustart</p>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+    
+    <div id="gameOver">
+        <h2>Game Over! 💀</h2>
+        <p style="font-size: 1.5em; margin-bottom: 20px;">Deine Punkte: <span id="finalScore">0</span></p>
+        <button onclick="restartGame()">Nochmal spielen</button>
+    </div>
+
+    <div id="victory">
+        <h2>Gewonnen! 🎉</h2>
+        <p style="font-size: 1.5em; margin-bottom: 20px;">Glückwunsch! Punkte: <span id="victoryScore">0</span></p>
+        <button onclick="nextLevel()">Nächstes Level</button>
+        <button onclick="restartGame()">Von vorne beginnen</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Spielvariablen
+        let gameRunning = true;
+        let lives = 3;
+        let score = 0;
+        let currentLevel = 1;
+        let keys = {};
+
+        // Spieler
+        const player = {
+            x: 50,
+            y: 450,
+            width: 30,
+            height: 40,
+            velocityX: 0,
+            velocityY: 0,
+            speed: 5,
+            jumpPower: 15,
+            onGround: false,
+            color: '#e74c3c'
+        };
+
+        // Physik-Konstanten
+        const gravity = 0.6;
+        const friction = 0.8;
+
+        // Level-Definitionen
+        const levels = [
+            // Level 1
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 800, height: 50, color: '#2ecc71' },
+                    { x: 200, y: 450, width: 150, height: 20, color: '#27ae60' },
+                    { x: 450, y: 350, width: 150, height: 20, color: '#27ae60' },
+                    { x: 150, y: 250, width: 120, height: 20, color: '#27ae60' },
+                    { x: 500, y: 200, width: 100, height: 20, color: '#27ae60' }
+                ],
+                obstacles: [
+                    { x: 350, y: 520, width: 30, height: 30, color: '#e74c3c' },
+                    { x: 400, y: 320, width: 30, height: 30, color: '#e74c3c' }
+                ],
+                coins: [
+                    { x: 275, y: 410, width: 20, height: 20, collected: false },
+                    { x: 525, y: 310, width: 20, height: 20, collected: false },
+                    { x: 195, y: 210, width: 20, height: 20, collected: false },
+                    { x: 550, y: 160, width: 20, height: 20, collected: false }
+                ],
+                goal: { x: 700, y: 480, width: 40, height: 70 }
+            },
+            // Level 2
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 800, height: 50, color: '#2ecc71' },
+                    { x: 100, y: 450, width: 100, height: 20, color: '#27ae60' },
+                    { x: 300, y: 400, width: 80, height: 20, color: '#27ae60' },
+                    { x: 480, y: 350, width: 100, height: 20, color: '#27ae60' },
+                    { x: 650, y: 300, width: 100, height: 20, color: '#27ae60' },
+                    { x: 500, y: 200, width: 120, height: 20, color: '#27ae60' },
+                    { x: 250, y: 150, width: 100, height: 20, color: '#27ae60' }
+                ],
+                obstacles: [
+                    { x: 250, y: 520, width: 30, height: 30, color: '#e74c3c' },
+                    { x: 420, y: 520, width: 30, height: 30, color: '#e74c3c' },
+                    { x: 350, y: 370, width: 30, height: 30, color: '#e74c3c' },
+                    { x: 600, y: 270, width: 30, height: 30, color: '#e74c3c' }
+                ],
+                coins: [
+                    { x: 150, y: 410, width: 20, height: 20, collected: false },
+                    { x: 340, y: 360, width: 20, height: 20, collected: false },
+                    { x: 530, y: 310, width: 20, height: 20, collected: false },
+                    { x: 700, y: 260, width: 20, height: 20, collected: false },
+                    { x: 560, y: 160, width: 20, height: 20, collected: false },
+                    { x: 300, y: 110, width: 20, height: 20, collected: false }
+                ],
+                goal: { x: 50, y: 480, width: 40, height: 70 }
+            },
+            // Level 3
+            {
+                platforms: [
+                    { x: 0, y: 550, width: 150, height: 50, color: '#2ecc71' },
+                    { x: 650, y: 550, width: 150, height: 50, color: '#2ecc71' },
+                    { x: 200, y: 500, width: 80, height: 20, color: '#27ae60' },
+                    { x: 350, y: 450, width: 80, height: 20, color: '#27ae60' },
+                    { x: 500, y: 500, width: 80, height: 20, color: '#27ae60' },
+                    { x: 150, y: 380, width: 100, height: 20, color: '#27ae60' },
+                    { x: 550, y: 380, width: 100, height: 20, color: '#27ae60' },
+                    { x: 350, y: 300, width: 100, height: 20, color: '#27ae60' },
+                    { x: 150, y: 220, width: 80, height: 20, color: '#27ae60' },
+                    { x: 570, y: 220, width: 80, height: 20, color: '#27ae60' },
+                    { x: 350, y: 120, width: 100, height: 20, color: '#27ae60' }
+                ],
+                obstacles: [
+                    { x: 300, y: 520, width: 30, height: 30, color: '#e74c3c' },
+                    { x: 470, y: 520, width: 30, height: 30, color: '#e74c3c' },
+                    { x: 240, y: 470, width: 30, height: 30, color: '#e74c3c' },
+                    { x: 420, y: 420, width: 30, height: 30, color: '#e74c3c' },
+                    { x: 320, y: 270, width: 30, height: 30, color: '#e74c3c' },
+                    { x: 610, y: 190, width: 30, height: 30, color: '#e74c3c' }
+                ],
+                coins: [
+                    { x: 240, y: 460, width: 20, height: 20, collected: false },
+                    { x: 390, y: 410, width: 20, height: 20, collected: false },
+                    { x: 540, y: 460, width: 20, height: 20, collected: false },
+                    { x: 190, y: 340, width: 20, height: 20, collected: false },
+                    { x: 390, y: 260, width: 20, height: 20, collected: false },
+                    { x: 590, y: 340, width: 20, height: 20, collected: false },
+                    { x: 190, y: 180, width: 20, height: 20, collected: false },
+                    { x: 610, y: 180, width: 20, height: 20, collected: false },
+                    { x: 390, y: 80, width: 20, height: 20, collected: false }
+                ],
+                goal: { x: 380, y: 50, width: 40, height: 70 }
+            }
+        ];
+
+        let currentLevelData = levels[0];
+
+        // Tastatur-Event-Listener
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            
+            // Springen
+            if ((e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp' || e.key === ' ') && player.onGround) {
+                player.velocityY = -player.jumpPower;
+                player.onGround = false;
+            }
+            
+            // Neustart
+            if (e.key === 'r' || e.key === 'R') {
+                restartGame();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        // Spieler-Update
+        function updatePlayer() {
+            // Horizontale Bewegung
+            if (keys['a'] || keys['arrowleft']) {
+                player.velocityX = -player.speed;
+            } else if (keys['d'] || keys['arrowright']) {
+                player.velocityX = player.speed;
+            } else {
+                player.velocityX *= friction;
+            }
+
+            // Gravitation
+            player.velocityY += gravity;
+
+            // Position aktualisieren
+            player.x += player.velocityX;
+            player.y += player.velocityY;
+
+            // Bildschirm-Grenzen
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) {
+                player.x = canvas.width - player.width;
+            }
+
+            // Boden
+            player.onGround = false;
+        }
+
+        // Kollisionserkennung
+        function checkCollisions() {
+            // Plattform-Kollision
+            currentLevelData.platforms.forEach(platform => {
+                if (player.x < platform.x + platform.width &&
+                    player.x + player.width > platform.x &&
+                    player.y < platform.y + platform.height &&
+                    player.y + player.height > platform.y) {
+                    
+                    // Von oben auf Plattform fallen
+                    if (player.velocityY > 0 && player.y + player.height - player.velocityY <= platform.y) {
+                        player.y = platform.y - player.height;
+                        player.velocityY = 0;
+                        player.onGround = true;
+                    }
+                    // Von unten gegen Plattform springen
+                    else if (player.velocityY < 0 && player.y - player.velocityY >= platform.y + platform.height) {
+                        player.y = platform.y + platform.height;
+                        player.velocityY = 0;
+                    }
+                }
+            });
+
+            // Hindernis-Kollision
+            currentLevelData.obstacles.forEach(obstacle => {
+                if (player.x < obstacle.x + obstacle.width &&
+                    player.x + player.width > obstacle.x &&
+                    player.y < obstacle.y + obstacle.height &&
+                    player.y + player.height > obstacle.y) {
+                    hitObstacle();
+                }
+            });
+
+            // Münzen-Kollision
+            currentLevelData.coins.forEach(coin => {
+                if (!coin.collected &&
+                    player.x < coin.x + coin.width &&
+                    player.x + player.width > coin.x &&
+                    player.y < coin.y + coin.height &&
+                    player.y + player.height > coin.y) {
+                    coin.collected = true;
+                    score += 10;
+                    updateScore();
+                }
+            });
+
+            // Ziel-Kollision
+            if (player.x < currentLevelData.goal.x + currentLevelData.goal.width &&
+                player.x + player.width > currentLevelData.goal.x &&
+                player.y < currentLevelData.goal.y + currentLevelData.goal.height &&
+                player.y + player.height > currentLevelData.goal.y) {
+                levelComplete();
+            }
+
+            // Aus dem Bildschirm gefallen
+            if (player.y > canvas.height) {
+                hitObstacle();
+            }
+        }
+
+        // Hindernis getroffen
+        function hitObstacle() {
+            lives--;
+            updateLives();
+            
+            if (lives <= 0) {
+                gameOver();
+            } else {
+                resetPlayerPosition();
+            }
+        }
+
+        // Spieler-Position zurücksetzen
+        function resetPlayerPosition() {
+            player.x = 50;
+            player.y = 450;
+            player.velocityX = 0;
+            player.velocityY = 0;
+        }
+
+        // Level abgeschlossen
+        function levelComplete() {
+            score += 50;
+            updateScore();
+            
+            if (currentLevel < levels.length) {
+                document.getElementById('victoryScore').textContent = score;
+                document.getElementById('overlay').style.display = 'block';
+                document.getElementById('victory').style.display = 'block';
+                gameRunning = false;
+            } else {
+                document.getElementById('victoryScore').textContent = score;
+                document.getElementById('overlay').style.display = 'block';
+                document.getElementById('victory').style.display = 'block';
+                document.querySelector('#victory h2').textContent = 'Alle Level geschafft! 🏆';
+                document.getElementById('victory').querySelector('button').style.display = 'none';
+                gameRunning = false;
+            }
+        }
+
+        // Nächstes Level
+        function nextLevel() {
+            currentLevel++;
+            currentLevelData = levels[currentLevel - 1];
+            document.getElementById('level').textContent = currentLevel;
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('victory').style.display = 'none';
+            resetPlayerPosition();
+            gameRunning = true;
+            gameLoop();
+        }
+
+        // Game Over
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        // Neustart
+        function restartGame() {
+            lives = 3;
+            score = 0;
+            currentLevel = 1;
+            currentLevelData = levels[0];
+            
+            // Münzen zurücksetzen
+            levels.forEach(level => {
+                level.coins.forEach(coin => coin.collected = false);
+            });
+            
+            updateLives();
+            updateScore();
+            document.getElementById('level').textContent = currentLevel;
+            
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('gameOver').style.display = 'none';
+            document.getElementById('victory').style.display = 'none';
+            document.querySelector('#victory h2').textContent = 'Gewonnen! 🎉';
+            document.getElementById('victory').querySelector('button').style.display = 'inline-block';
+            
+            resetPlayerPosition();
+            gameRunning = true;
+            gameLoop();
+        }
+
+        // UI aktualisieren
+        function updateLives() {
+            document.getElementById('lives').textContent = lives;
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+        }
+
+        // Zeichnen
+        function draw() {
+            // Hintergrund löschen
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Himmel-Gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#E0F6FF');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Plattformen zeichnen
+            currentLevelData.platforms.forEach(platform => {
+                ctx.fillStyle = platform.color;
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                ctx.strokeStyle = '#1e8449';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+            });
+
+            // Hindernisse zeichnen
+            currentLevelData.obstacles.forEach(obstacle => {
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                
+                // Stacheln-Effekt
+                ctx.fillStyle = '#c0392b';
+                ctx.beginPath();
+                for (let i = 0; i < obstacle.width; i += 10) {
+                    ctx.moveTo(obstacle.x + i, obstacle.y + obstacle.height);
+                    ctx.lineTo(obstacle.x + i + 5, obstacle.y);
+                    ctx.lineTo(obstacle.x + i + 10, obstacle.y + obstacle.height);
+                }
+                ctx.fill();
+            });
+
+            // Münzen zeichnen
+            currentLevelData.coins.forEach(coin => {
+                if (!coin.collected) {
+                    ctx.fillStyle = '#f39c12';
+                    ctx.beginPath();
+                    ctx.arc(coin.x + coin.width / 2, coin.y + coin.height / 2, coin.width / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#d68910';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // Stern-Symbol
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('★', coin.x + coin.width / 2, coin.y + coin.height / 2);
+                }
+            });
+
+            // Ziel zeichnen
+            ctx.fillStyle = '#f39c12';
+            ctx.fillRect(currentLevelData.goal.x, currentLevelData.goal.y, currentLevelData.goal.width, currentLevelData.goal.height);
+            ctx.fillStyle = '#d68910';
+            ctx.fillRect(currentLevelData.goal.x + 5, currentLevelData.goal.y, 5, currentLevelData.goal.height);
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.moveTo(currentLevelData.goal.x + 10, currentLevelData.goal.y);
+            ctx.lineTo(currentLevelData.goal.x + 40, currentLevelData.goal.y + 15);
+            ctx.lineTo(currentLevelData.goal.x + 10, currentLevelData.goal.y + 30);
+            ctx.closePath();
+            ctx.fill();
+
+            // Spieler zeichnen
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            // Gesicht
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(player.x + 8, player.y + 10, 5, 5);
+            ctx.fillRect(player.x + 17, player.y + 10, 5, 5);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(player.x + 10, player.y + 12, 2, 2);
+            ctx.fillRect(player.x + 19, player.y + 12, 2, 2);
+            ctx.fillRect(player.x + 10, player.y + 22, 10, 2);
+        }
+
+        // Spiel-Loop
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            updatePlayer();
+            checkCollisions();
+            draw();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Spiel starten
+        gameLoop();
+    </script>
+</body>
+</html>
+
+

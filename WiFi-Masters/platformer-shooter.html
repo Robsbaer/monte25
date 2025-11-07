@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plattform-Shooter mit Bau-System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 20px;
+            max-width: 95vw;
+        }
+        
+        #gameCanvas {
+            border: 3px solid #333;
+            border-radius: 10px;
+            display: block;
+            background: #87CEEB;
+        }
+        
+        #ui {
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .stat {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+        
+        button.build-mode {
+            background: #FF9800;
+        }
+        
+        button.build-mode:hover {
+            background: #F57C00;
+        }
+        
+        #inventory {
+            display: flex;
+            gap: 10px;
+            background: rgba(0,0,0,0.1);
+            padding: 10px;
+            border-radius: 10px;
+        }
+        
+        .item {
+            background: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .instructions {
+            margin-top: 15px;
+            background: rgba(255,255,255,0.9);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+        
+        .instructions ul {
+            margin-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
+        <div id="ui">
+            <div class="stat">Level: <span id="level">1</span>/30</div>
+            <div class="stat">❤️ Leben: <span id="lives">3</span></div>
+            <div class="stat">⭐ Score: <span id="score">0</span></div>
+            <div class="controls">
+                <button id="buildModeBtn" class="build-mode">🏗️ Bau-Modus</button>
+                <button id="restartBtn">🔄 Neustart</button>
+            </div>
+        </div>
+        <div id="inventory">
+            <div class="item">🪵 Holz: <span id="wood">0</span></div>
+            <div class="item">🪨 Stein: <span id="stone">0</span></div>
+            <div class="item">💎 Diamant: <span id="diamond">0</span></div>
+            <div class="item">🧱 Ziegel: <span id="bricks">0</span></div>
+        </div>
+        <div class="instructions">
+            <h3>🎮 Steuerung:</h3>
+            <ul>
+                <li><strong>← →</strong> Bewegung | <strong>Leertaste</strong> Springen | <strong>Shift</strong> Schießen</li>
+                <li><strong>Bau-Modus:</strong> Klicke auf den Button und dann auf die Karte, um Blöcke zu platzieren</li>
+                <li><strong>Ziel:</strong> Springe auf Gegner, sammle Ressourcen, baue dein Haus und erreiche Level 30!</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Audio Context für Sounds
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Sound Funktionen
+        function playSound(type) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            if (type === 'shoot') {
+                oscillator.frequency.value = 600;
+                oscillator.type = 'square';
+                gainNode.gain.value = 0.1;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.08);
+            } else if (type === 'jump') {
+                oscillator.frequency.value = 400;
+                gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.2);
+            } else if (type === 'enemyHit') {
+                oscillator.frequency.value = 300;
+                oscillator.type = 'sawtooth';
+                gainNode.gain.value = 0.12;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } else if (type === 'collect') {
+                oscillator.frequency.value = 800;
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.15);
+            } else if (type === 'levelComplete') {
+                oscillator.frequency.value = 500;
+                gainNode.gain.value = 0.15;
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.1);
+                setTimeout(() => {
+                    const osc2 = audioContext.createOscillator();
+                    const gain2 = audioContext.createGain();
+                    osc2.connect(gain2);
+                    gain2.connect(audioContext.destination);
+                    osc2.frequency.value = 700;
+                    gain2.gain.value = 0.15;
+                    osc2.start();
+                    osc2.stop(audioContext.currentTime + 0.15);
+                }, 100);
+            }
+        }
+        
+        // Game State
+        let gameState = {
+            level: 1,
+            lives: 3,
+            score: 0,
+            buildMode: false,
+            inventory: {
+                wood: 0,
+                stone: 0,
+                diamond: 0,
+                bricks: 0
+            }
+        };
+        
+        // Player
+        const player = {
+            x: 100,
+            y: 400,
+            width: 30,
+            height: 40,
+            velocityX: 0,
+            velocityY: 0,
+            speed: 5,
+            jumpPower: 15,
+            gravity: 0.6,
+            onGround: false,
+            color: '#4CAF50'
+        };
+        
+        // Keys
+        const keys = {
+            left: false,
+            right: false,
+            space: false,
+            shift: false
+        };
+        
+        // Enemies
+        let enemies = [];
+        
+        // Collectibles
+        let collectibles = [];
+        
+        // Bullets
+        let bullets = [];
+        
+        // Platforms
+        let platforms = [];
+        
+        // Build blocks
+        let buildBlocks = [];
+        
+        // Initialize level
+        function initLevel() {
+            enemies = [];
+            collectibles = [];
+            platforms = [];
+            
+            // Create ground
+            platforms.push({
+                x: 0,
+                y: 550,
+                width: canvas.width,
+                height: 50,
+                color: '#8B4513'
+            });
+            
+            // Generate platforms based on level
+            const numPlatforms = 3 + Math.floor(gameState.level / 5);
+            for (let i = 0; i < numPlatforms; i++) {
+                platforms.push({
+                    x: 150 + i * 200,
+                    y: 450 - (i % 3) * 80,
+                    width: 100 + Math.random() * 50,
+                    height: 20,
+                    color: '#654321'
+                });
+            }
+            
+            // Generate enemies based on level
+            const numEnemies = 2 + Math.floor(gameState.level / 3);
+            for (let i = 0; i < numEnemies; i++) {
+                enemies.push({
+                    x: 200 + i * 250,
+                    y: 400,
+                    width: 30,
+                    height: 30,
+                    velocityX: 2 + Math.random() * 2,
+                    velocityY: 0,
+                    gravity: 0.6,
+                    onGround: false,
+                    color: '#FF4444',
+                    alive: true
+                });
+            }
+            
+            // Generate collectibles
+            const collectibleTypes = ['wood', 'stone', 'diamond', 'bricks'];
+            const numCollectibles = 5 + Math.floor(gameState.level / 2);
+            for (let i = 0; i < numCollectibles; i++) {
+                collectibles.push({
+                    x: 100 + Math.random() * (canvas.width - 200),
+                    y: 100 + Math.random() * 300,
+                    width: 20,
+                    height: 20,
+                    type: collectibleTypes[Math.floor(Math.random() * collectibleTypes.length)],
+                    collected: false
+                });
+            }
+            
+            // Reset player position
+            player.x = 100;
+            player.y = 400;
+            player.velocityX = 0;
+            player.velocityY = 0;
+        }
+        
+        // Draw functions
+        function drawPlayer() {
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            // Eyes
+            ctx.fillStyle = 'white';
+            ctx.fillRect(player.x + 8, player.y + 10, 6, 6);
+            ctx.fillRect(player.x + 16, player.y + 10, 6, 6);
+            
+            ctx.fillStyle = 'black';
+            ctx.fillRect(player.x + 10, player.y + 12, 3, 3);
+            ctx.fillRect(player.x + 18, player.y + 12, 3, 3);
+        }
+        
+        function drawEnemies() {
+            enemies.forEach(enemy => {
+                if (enemy.alive) {
+                    ctx.fillStyle = enemy.color;
+                    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                    
+                    // Evil eyes
+                    ctx.fillStyle = 'yellow';
+                    ctx.fillRect(enemy.x + 5, enemy.y + 8, 6, 6);
+                    ctx.fillRect(enemy.x + 19, enemy.y + 8, 6, 6);
+                    
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(enemy.x + 7, enemy.y + 10, 3, 3);
+                    ctx.fillRect(enemy.x + 21, enemy.y + 10, 3, 3);
+                }
+            });
+        }
+        
+        function drawCollectibles() {
+            collectibles.forEach(item => {
+                if (!item.collected) {
+                    const icons = {
+                        wood: '🪵',
+                        stone: '🪨',
+                        diamond: '💎',
+                        bricks: '🧱'
+                    };
+                    
+                    ctx.font = '20px Arial';
+                    ctx.fillText(icons[item.type], item.x, item.y + 20);
+                }
+            });
+        }
+        
+        function drawPlatforms() {
+            platforms.forEach(platform => {
+                ctx.fillStyle = platform.color;
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                
+                // Add texture
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < platform.width; i += 20) {
+                    ctx.strokeRect(platform.x + i, platform.y, 20, platform.height);
+                }
+            });
+        }
+        
+        function drawBuildBlocks() {
+            buildBlocks.forEach(block => {
+                ctx.fillStyle = block.color;
+                ctx.fillRect(block.x, block.y, block.width, block.height);
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(block.x, block.y, block.width, block.height);
+            });
+        }
+        
+        function drawBullets() {
+            bullets.forEach(bullet => {
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        // Physics and collision
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+        
+        function updatePlayer() {
+            // Horizontal movement
+            if (keys.left) player.velocityX = -player.speed;
+            else if (keys.right) player.velocityX = player.speed;
+            else player.velocityX = 0;
+            
+            // Jump
+            if (keys.space && player.onGround) {
+                player.velocityY = -player.jumpPower;
+                player.onGround = false;
+                playSound('jump');
+            }
+            
+            // Shoot
+            if (keys.shift && bullets.length < 5) {
+                bullets.push({
+                    x: player.x + player.width,
+                    y: player.y + player.height / 2,
+                    radius: 5,
+                    velocityX: 10,
+                    velocityY: 0
+                });
+                keys.shift = false; // Prevent rapid fire
+                playSound('shoot');
+            }
+            
+            // Apply gravity
+            player.velocityY += player.gravity;
+            
+            // Update position
+            player.x += player.velocityX;
+            player.y += player.velocityY;
+            
+            // Check ground collision
+            player.onGround = false;
+            [...platforms, ...buildBlocks].forEach(platform => {
+                if (checkCollision(player, platform)) {
+                    if (player.velocityY > 0) {
+                        player.y = platform.y - player.height;
+                        player.velocityY = 0;
+                        player.onGround = true;
+                    }
+                }
+            });
+            
+            // Boundaries
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+            if (player.y > canvas.height) {
+                gameState.lives--;
+                if (gameState.lives <= 0) {
+                    gameState.lives = 3;
+                    gameState.level = 1;
+                    gameState.score = 0;
+                }
+                initLevel();
+            }
+        }
+        
+        function updateEnemies() {
+            enemies.forEach(enemy => {
+                if (!enemy.alive) return;
+                
+                // AI movement
+                enemy.velocityY += enemy.gravity;
+                enemy.x += enemy.velocityX;
+                enemy.y += enemy.velocityY;
+                
+                // Check platform collision
+                enemy.onGround = false;
+                [...platforms, ...buildBlocks].forEach(platform => {
+                    if (checkCollision(enemy, platform)) {
+                        if (enemy.velocityY > 0) {
+                            enemy.y = platform.y - enemy.height;
+                            enemy.velocityY = 0;
+                            enemy.onGround = true;
+                        }
+                    }
+                });
+                
+                // Bounce off walls
+                if (enemy.x < 0 || enemy.x + enemy.width > canvas.width) {
+                    enemy.velocityX *= -1;
+                }
+                
+                // Check if player jumps on enemy
+                if (checkCollision(player, enemy)) {
+                    if (player.velocityY > 0 && player.y < enemy.y) {
+                        // Player kills enemy by jumping on it
+                        enemy.alive = false;
+                        player.velocityY = -10; // Bounce
+                        gameState.score += 100;
+                        playSound('enemyHit');
+                    } else {
+                        // Player gets hurt
+                        gameState.lives--;
+                        if (gameState.lives <= 0) {
+                            gameState.lives = 3;
+                            gameState.level = 1;
+                            gameState.score = 0;
+                        }
+                        initLevel();
+                    }
+                }
+            });
+        }
+        
+        function updateBullets() {
+            bullets = bullets.filter(bullet => {
+                bullet.x += bullet.velocityX;
+                
+                // Remove if off screen
+                if (bullet.x > canvas.width) return false;
+                
+                // Check enemy collision
+                let hit = false;
+                enemies.forEach(enemy => {
+                    if (enemy.alive && checkCollision(bullet, enemy)) {
+                        enemy.alive = false;
+                        gameState.score += 50;
+                        hit = true;
+                        playSound('enemyHit');
+                    }
+                });
+                
+                return !hit;
+            });
+        }
+        
+        function updateCollectibles() {
+            collectibles.forEach(item => {
+                if (!item.collected && checkCollision(player, item)) {
+                    item.collected = true;
+                    gameState.inventory[item.type]++;
+                    gameState.score += 25;
+                    playSound('collect');
+                }
+            });
+        }
+        
+        function checkLevelComplete() {
+            const allEnemiesDead = enemies.every(e => !e.alive);
+            const allCollected = collectibles.every(c => c.collected);
+            
+            if (allEnemiesDead && allCollected) {
+                gameState.level++;
+                gameState.score += 500;
+                playSound('levelComplete');
+                
+                if (gameState.level > 30) {
+                    alert('🎉 Glückwunsch! Du hast alle 30 Level geschafft! 🎉');
+                    gameState.level = 1;
+                    gameState.score = 0;
+                    gameState.inventory = { wood: 0, stone: 0, diamond: 0, bricks: 0 };
+                }
+                
+                initLevel();
+            }
+        }
+        
+        // Update UI
+        function updateUI() {
+            document.getElementById('level').textContent = gameState.level;
+            document.getElementById('lives').textContent = gameState.lives;
+            document.getElementById('score').textContent = gameState.score;
+            document.getElementById('wood').textContent = gameState.inventory.wood;
+            document.getElementById('stone').textContent = gameState.inventory.stone;
+            document.getElementById('diamond').textContent = gameState.inventory.diamond;
+            document.getElementById('bricks').textContent = gameState.inventory.bricks;
+        }
+        
+        // Game loop
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#E0F6FF');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update
+            updatePlayer();
+            updateEnemies();
+            updateBullets();
+            updateCollectibles();
+            checkLevelComplete();
+            
+            // Draw
+            drawPlatforms();
+            drawBuildBlocks();
+            drawCollectibles();
+            drawEnemies();
+            drawPlayer();
+            drawBullets();
+            
+            // UI
+            updateUI();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') keys.left = true;
+            if (e.key === 'ArrowRight') keys.right = true;
+            if (e.key === ' ') {
+                e.preventDefault();
+                keys.space = true;
+            }
+            if (e.key === 'Shift') {
+                e.preventDefault();
+                keys.shift = true;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') keys.left = false;
+            if (e.key === 'ArrowRight') keys.right = false;
+            if (e.key === ' ') keys.space = false;
+        });
+        
+        // Build mode
+        document.getElementById('buildModeBtn').addEventListener('click', () => {
+            gameState.buildMode = !gameState.buildMode;
+            const btn = document.getElementById('buildModeBtn');
+            btn.textContent = gameState.buildMode ? '🏗️ Bau-Modus AN' : '🏗️ Bau-Modus AUS';
+            btn.style.background = gameState.buildMode ? '#4CAF50' : '#FF9800';
+        });
+        
+        canvas.addEventListener('click', (e) => {
+            if (!gameState.buildMode) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / 40) * 40;
+            const y = Math.floor((e.clientY - rect.top) / 40) * 40;
+            
+            // Check if we have resources
+            const totalResources = Object.values(gameState.inventory).reduce((a, b) => a + b, 0);
+            if (totalResources > 0) {
+                // Use first available resource
+                for (let resource in gameState.inventory) {
+                    if (gameState.inventory[resource] > 0) {
+                        gameState.inventory[resource]--;
+                        
+                        const colors = {
+                            wood: '#8B4513',
+                            stone: '#808080',
+                            diamond: '#00CED1',
+                            bricks: '#CD5C5C'
+                        };
+                        
+                        buildBlocks.push({
+                            x: x,
+                            y: y,
+                            width: 40,
+                            height: 40,
+                            color: colors[resource]
+                        });
+                        break;
+                    }
+                }
+            }
+        });
+        
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            gameState.level = 1;
+            gameState.lives = 3;
+            gameState.score = 0;
+            gameState.inventory = { wood: 0, stone: 0, diamond: 0, bricks: 0 };
+            buildBlocks = [];
+            initLevel();
+        });
+        
+        // Start game
+        initLevel();
+        gameLoop();
+    </script>
+</body>
+</html>
+

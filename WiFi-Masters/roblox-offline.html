@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoBlock - Offline Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #gameCanvas {
+            display: block;
+            cursor: pointer;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .ui-overlay > * {
+            pointer-events: auto;
+        }
+
+        .top-bar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            color: white;
+            font-size: 24px;
+        }
+
+        .tools-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            gap: 15px;
+        }
+
+        .tool-button {
+            width: 60px;
+            height: 60px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tool-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .tool-button.active {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 0 20px rgba(245, 87, 108, 0.5);
+        }
+
+        .color-palette {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 15px;
+            display: none;
+            gap: 10px;
+            flex-wrap: wrap;
+            max-width: 300px;
+        }
+
+        .color-palette.active {
+            display: flex;
+        }
+
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.selected {
+            border-color: white;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        .controls-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+            max-width: 250px;
+        }
+
+        .controls-info h3 {
+            margin-bottom: 10px;
+            color: #667eea;
+        }
+
+        .control-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .key {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+        }
+
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .crosshair::before {
+            left: 50%;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            transform: translateX(-50%);
+        }
+
+        .crosshair::after {
+            top: 50%;
+            left: 0;
+            height: 2px;
+            width: 100%;
+            transform: translateY(-50%);
+        }
+
+        .save-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(76, 175, 80, 0.8);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+
+        .save-button:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: translateY(-3px);
+        }
+
+        .load-button {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            background: rgba(33, 150, 243, 0.8);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+
+        .load-button:hover {
+            background: rgba(33, 150, 243, 1);
+            transform: translateY(-3px);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <div class="ui-overlay">
+        <div class="top-bar">🎮 RoBlock - Offline</div>
+        
+        <button class="save-button" onclick="saveWorld()">💾 Speichern</button>
+        <button class="load-button" onclick="loadWorld()">📂 Laden</button>
+
+        <div class="controls-info">
+            <h3>⌨️ Steuerung</h3>
+            <div class="control-item">
+                <span>Bewegen</span>
+                <span><span class="key">W A S D</span></span>
+            </div>
+            <div class="control-item">
+                <span>Springen</span>
+                <span><span class="key">SPACE</span></span>
+            </div>
+            <div class="control-item">
+                <span>Umsehen</span>
+                <span><span class="key">MAUS</span></span>
+            </div>
+            <div class="control-item">
+                <span>Block platzieren</span>
+                <span><span class="key">LINKS</span></span>
+            </div>
+            <div class="control-item">
+                <span>Block entfernen</span>
+                <span><span class="key">RECHTS</span></span>
+            </div>
+        </div>
+
+        <div class="crosshair"></div>
+
+        <div class="tools-panel">
+            <button class="tool-button active" onclick="selectTool('build')">🧱</button>
+            <button class="tool-button" onclick="selectTool('delete')">⛏️</button>
+            <button class="tool-button" onclick="selectTool('color')">🎨</button>
+        </div>
+
+        <div class="color-palette" id="colorPalette"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        let scene, camera, renderer;
+        let player, playerMesh;
+        let controls = { forward: false, backward: false, left: false, right: false, jump: false };
+        let velocity = new THREE.Vector3();
+        let canJump = false;
+        let mouseX = 0, mouseY = 0;
+        let isPointerLocked = false;
+        let currentTool = 'build';
+        let currentColor = 0xff0000;
+        let blocks = [];
+
+        const colors = [
+            '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF',
+            '#FFA500', '#800080', '#FFC0CB', '#A52A2A', '#808080', '#000000',
+            '#FFFFFF', '#FFD700', '#4B0082', '#8B4513'
+        ];
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.Fog(0x87CEEB, 0, 500);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10);
+
+            const canvas = document.getElementById('gameCanvas');
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            sunLight.position.set(50, 100, 50);
+            sunLight.castShadow = true;
+            scene.add(sunLight);
+
+            const groundGeometry = new THREE.PlaneGeometry(200, 200);
+            const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            const gridHelper = new THREE.GridHelper(200, 50, 0x000000, 0x000000);
+            gridHelper.material.opacity = 0.2;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+
+            const playerGeometry = new THREE.CapsuleGeometry(0.5, 1.5, 4, 8);
+            const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+            playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
+            playerMesh.position.set(0, 2, 0);
+            playerMesh.castShadow = true;
+            scene.add(playerMesh);
+
+            player = {
+                position: playerMesh.position,
+                rotation: new THREE.Euler(0, 0, 0),
+                height: 2
+            };
+
+            createStartWorld();
+
+            const palette = document.getElementById('colorPalette');
+            colors.forEach(color => {
+                const colorDiv = document.createElement('div');
+                colorDiv.className = 'color-option';
+                colorDiv.style.backgroundColor = color;
+                if (color === '#FF0000') colorDiv.classList.add('selected');
+                colorDiv.onclick = () => selectColor(color, colorDiv);
+                palette.appendChild(colorDiv);
+            });
+
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            document.addEventListener('click', onMouseClick);
+            document.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('resize', onWindowResize);
+
+            canvas.addEventListener('click', () => {
+                canvas.requestPointerLock();
+            });
+
+            document.addEventListener('pointerlockchange', () => {
+                isPointerLocked = document.pointerLockElement === canvas;
+            });
+        }
+
+        function createStartWorld() {
+            for (let x = -10; x <= 10; x++) {
+                for (let z = -10; z <= 10; z++) {
+                    if (Math.abs(x) === 10 || Math.abs(z) === 10) {
+                        createBlock({ x, y: 0, z }, 0x8B4513);
+                    }
+                }
+            }
+
+            for (let y = 0; y < 5; y++) {
+                createBlock({ x: 8, y, z: 8 }, 0xFF0000);
+                createBlock({ x: -8, y, z: 8 }, 0x0000FF);
+                createBlock({ x: 8, y, z: -8 }, 0x00FF00);
+                createBlock({ x: -8, y, z: -8 }, 0xFFFF00);
+            }
+        }
+
+        function createBlock(position, color) {
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            const material = new THREE.MeshStandardMaterial({ color });
+            const block = new THREE.Mesh(geometry, material);
+            block.position.set(position.x, position.y, position.z);
+            block.castShadow = true;
+            block.receiveShadow = true;
+            scene.add(block);
+            blocks.push(block);
+            return block;
+        }
+
+        function onKeyDown(event) {
+            switch (event.code) {
+                case 'KeyW': controls.forward = true; break;
+                case 'KeyS': controls.backward = true; break;
+                case 'KeyA': controls.left = true; break;
+                case 'KeyD': controls.right = true; break;
+                case 'Space': if (canJump) controls.jump = true; break;
+            }
+        }
+
+        function onKeyUp(event) {
+            switch (event.code) {
+                case 'KeyW': controls.forward = false; break;
+                case 'KeyS': controls.backward = false; break;
+                case 'KeyA': controls.left = false; break;
+                case 'KeyD': controls.right = false; break;
+                case 'Space': controls.jump = false; break;
+            }
+        }
+
+        function onMouseMove(event) {
+            if (isPointerLocked) {
+                mouseX += event.movementX * 0.002;
+                mouseY -= event.movementY * 0.002;
+                mouseY = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, mouseY));
+            }
+        }
+
+        function onMouseClick(event) {
+            if (!isPointerLocked) return;
+
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+            const intersects = raycaster.intersectObjects(blocks);
+
+            if (event.button === 0 && currentTool === 'build') {
+                if (intersects.length > 0) {
+                    const intersect = intersects[0];
+                    const normal = intersect.face.normal;
+                    const newPos = {
+                        x: Math.round(intersect.point.x + normal.x * 0.5),
+                        y: Math.round(intersect.point.y + normal.y * 0.5),
+                        z: Math.round(intersect.point.z + normal.z * 0.5)
+                    };
+                    createBlock(newPos, currentColor);
+                }
+            } else if (event.button === 2 && currentTool === 'delete') {
+                if (intersects.length > 0) {
+                    const block = intersects[0].object;
+                    scene.remove(block);
+                    blocks = blocks.filter(b => b !== block);
+                }
+            }
+        }
+
+        function selectTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-button').forEach((btn, idx) => {
+                btn.classList.remove('active');
+            });
+            
+            if (tool === 'build') {
+                document.querySelectorAll('.tool-button')[0].classList.add('active');
+                document.getElementById('colorPalette').classList.remove('active');
+            } else if (tool === 'delete') {
+                document.querySelectorAll('.tool-button')[1].classList.add('active');
+                document.getElementById('colorPalette').classList.remove('active');
+            } else if (tool === 'color') {
+                document.querySelectorAll('.tool-button')[2].classList.add('active');
+                document.getElementById('colorPalette').classList.add('active');
+            }
+        }
+
+        function selectColor(color, element) {
+            currentColor = parseInt(color.replace('#', '0x'));
+            document.querySelectorAll('.color-option').forEach(el => {
+                el.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            selectTool('build');
+        }
+
+        function saveWorld() {
+            const worldData = {
+                blocks: blocks.map(b => ({
+                    position: { x: b.position.x, y: b.position.y, z: b.position.z },
+                    color: b.material.color.getHex()
+                })),
+                playerPosition: { x: player.position.x, y: player.position.y, z: player.position.z },
+                date: new Date().toISOString()
+            };
+            
+            localStorage.setItem('roblock_world', JSON.stringify(worldData));
+            alert('🎉 Welt gespeichert!');
+        }
+
+        function loadWorld() {
+            const savedWorld = localStorage.getItem('roblock_world');
+            if (savedWorld) {
+                const worldData = JSON.parse(savedWorld);
+                
+                blocks.forEach(b => scene.remove(b));
+                blocks = [];
+                
+                worldData.blocks.forEach(blockData => {
+                    createBlock(blockData.position, blockData.color);
+                });
+                
+                if (worldData.playerPosition) {
+                    player.position.set(
+                        worldData.playerPosition.x,
+                        worldData.playerPosition.y,
+                        worldData.playerPosition.z
+                    );
+                }
+                
+                alert('✅ Welt geladen!');
+            } else {
+                alert('❌ Keine gespeicherte Welt gefunden!');
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function updatePlayer(delta) {
+            velocity.y -= 25 * delta;
+
+            const speed = 10;
+            const direction = new THREE.Vector3();
+
+            if (controls.forward) direction.z -= 1;
+            if (controls.backward) direction.z += 1;
+            if (controls.left) direction.x -= 1;
+            if (controls.right) direction.x += 1;
+
+            direction.normalize();
+            direction.applyEuler(new THREE.Euler(0, mouseX, 0));
+
+            velocity.x = direction.x * speed;
+            velocity.z = direction.z * speed;
+
+            if (controls.jump && canJump) {
+                velocity.y = 10;
+                canJump = false;
+            }
+
+            player.position.x += velocity.x * delta;
+            player.position.y += velocity.y * delta;
+            player.position.z += velocity.z * delta;
+
+            if (player.position.y < 2) {
+                player.position.y = 2;
+                velocity.y = 0;
+                canJump = true;
+            }
+
+            camera.position.copy(player.position);
+            camera.position.y += 0.5;
+            camera.rotation.set(mouseY, mouseX, 0);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = 0.016;
+            updatePlayer(delta);
+            renderer.render(scene, camera);
+        }
+
+        init();
+        animate();
+
+        document.addEventListener('contextmenu', e => e.preventDefault());
+    </script>
+</body>
+</html>
+

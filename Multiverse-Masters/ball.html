@@ -28,7 +28,7 @@
       let gameOver = false;
       let score = 0;
       let level = 1;
-      let maxLevel = 5;
+      let maxLevel = 10;
       
       // Audio
       let audioContext;
@@ -104,10 +104,15 @@
         // Melodien für verschiedene Level
         const melodies = {
           1: [262, 294, 330, 349, 392], // C-Dur (fröhlich)
-          2: [294, 330, 370, 392, 440], // D-Dur (energetisch)
-          3: [330, 349, 392, 440, 494], // E-Dur (hell)
-          4: [220, 247, 277, 294, 330], // A-Moll (melancholisch)
-          5: [196, 220, 247, 262, 294]  // G-Dur (mystisch)
+          2: [349, 392, 440, 494, 523], // F-Dur (heroisch) - Vulkan
+          3: [262, 311, 370, 415, 494], // C-Moll (dramatisch) - Unterwasser
+          4: [440, 494, 523, 587, 659], // A-Dur (triumphierend) - Regenbogen
+          5: [233, 262, 294, 311, 349], // B-Moll (düster) - Höhle
+          6: [523, 587, 659, 698, 784], // C-Dur hoch (episch) - Weltraum
+          7: [294, 330, 370, 392, 440], // D-Dur (energetisch) - Wüste
+          8: [330, 349, 392, 440, 494], // E-Dur (hell) - Schnee
+          9: [220, 247, 277, 294, 330], // A-Moll (melancholisch) - Sonnenuntergang
+          10: [196, 220, 247, 262, 294] // G-Dur (mystisch) - Nacht
         };
         
         const melody = melodies[lvl] || melodies[1];
@@ -163,25 +168,55 @@
             { width: 50, height: 100, color: [60, 100, 40], name: "Großer Stein" },
             { width: 35, height: 120, color: [50, 90, 30], name: "Hoher Stein" }
           ],
-          2: [ // Level 2: Sand-Kakteen und Felsen
+          2: [ // Level 2: Vulkan - Lavasteine
+            { width: 35, height: 65, color: [200, 50, 30], name: "Lavastein" },
+            { width: 45, height: 85, color: [180, 40, 20], name: "Glühender Felsen" },
+            { width: 40, height: 115, color: [160, 30, 10], name: "Magmablock" },
+            { width: 30, height: 95, color: [220, 60, 40], name: "Heißer Stein" }
+          ],
+          3: [ // Level 3: Unterwasser - Korallen und Steine
+            { width: 30, height: 70, color: [255, 100, 150], name: "Koralle", shape: "cactus" },
+            { width: 40, height: 60, color: [100, 150, 200], name: "Wasserstein" },
+            { width: 35, height: 100, color: [80, 130, 180], name: "Algenblock" },
+            { width: 45, height: 80, color: [255, 120, 170], name: "Große Koralle", shape: "cactus" }
+          ],
+          4: [ // Level 4: Regenbogen - Bunte Kristalle
+            { width: 30, height: 65, color: [255, 100, 100], name: "Roter Kristall", shape: "crystal" },
+            { width: 35, height: 75, color: [100, 255, 100], name: "Grüner Kristall", shape: "crystal" },
+            { width: 40, height: 110, color: [100, 100, 255], name: "Blauer Kristall", shape: "crystal" },
+            { width: 38, height: 90, color: [255, 255, 100], name: "Gelber Kristall", shape: "crystal" }
+          ],
+          5: [ // Level 5: Höhle - Stalaktiten und Stalagmiten
+            { width: 35, height: 70, color: [80, 70, 60], name: "Stalagmit", shape: "crystal" },
+            { width: 40, height: 85, color: [70, 60, 50], name: "Höhlenstein" },
+            { width: 30, height: 105, color: [60, 50, 40], name: "Großer Stalagmit", shape: "crystal" },
+            { width: 45, height: 75, color: [90, 80, 70], name: "Felsblock" }
+          ],
+          6: [ // Level 6: Weltraum - Asteroiden und Kristalle
+            { width: 35, height: 60, color: [150, 150, 180], name: "Asteroid" },
+            { width: 40, height: 80, color: [100, 255, 200], name: "Alien-Kristall", shape: "crystal" },
+            { width: 45, height: 110, color: [130, 130, 160], name: "Großer Asteroid" },
+            { width: 30, height: 95, color: [120, 255, 220], name: "Leucht-Kristall", shape: "crystal" }
+          ],
+          7: [ // Level 7: Wüste - Sand-Kakteen und Felsen
             { width: 25, height: 60, color: [100, 160, 80], name: "Kaktus", shape: "cactus" },
             { width: 45, height: 50, color: [200, 150, 100], name: "Sandfelsen" },
             { width: 35, height: 90, color: [190, 140, 90], name: "Großer Felsen" },
             { width: 30, height: 110, color: [80, 140, 70], name: "Großer Kaktus", shape: "cactus" }
           ],
-          3: [ // Level 3: Eis und Schneehaufen
+          8: [ // Level 8: Schnee - Eis und Schneehaufen
             { width: 40, height: 45, color: [200, 220, 255], name: "Eisblock" },
             { width: 50, height: 70, color: [180, 210, 250], name: "Schneehaufen" },
             { width: 35, height: 100, color: [190, 215, 255], name: "Großer Eisblock" },
             { width: 45, height: 85, color: [170, 200, 245], name: "Eiszapfen" }
           ],
-          4: [ // Level 4: Dunkle Felsen
+          9: [ // Level 9: Sonnenuntergang - Dunkle Felsen
             { width: 35, height: 55, color: [120, 80, 140], name: "Dunkler Stein" },
             { width: 45, height: 75, color: [100, 60, 120], name: "Lila Felsen" },
             { width: 40, height: 105, color: [90, 50, 110], name: "Großer Felsen" },
             { width: 30, height: 95, color: [80, 40, 100], name: "Spitzer Stein" }
           ],
-          5: [ // Level 5: Kristalle und dunkle Steine
+          10: [ // Level 10: Nacht - Kristalle und dunkle Steine
             { width: 30, height: 60, color: [100, 80, 150], name: "Kristall", shape: "crystal" },
             { width: 40, height: 80, color: [60, 60, 120], name: "Dunkler Stein" },
             { width: 35, height: 110, color: [80, 60, 140], name: "Großer Kristall", shape: "crystal" },
@@ -214,7 +249,57 @@
             groundMain: [50, 180, 50],
             groundStripe: [40, 160, 40]
           },
-          2: { // Wüste
+          2: { // Vulkan
+            name: "Vulkan",
+            skyTop: [80, 30, 30],
+            skyBottom: [120, 40, 20],
+            sunColor: [255, 80, 0], // Glühende Sonne
+            mountainBack: [100, 40, 30],
+            mountainFront: [140, 50, 30],
+            groundMain: [60, 20, 10],
+            groundStripe: [80, 30, 15]
+          },
+          3: { // Unterwasser
+            name: "Unterwasser",
+            skyTop: [0, 100, 150],
+            skyBottom: [0, 150, 200],
+            sunColor: [255, 255, 150], // Lichtstrahl
+            mountainBack: [50, 120, 150],
+            mountainFront: [70, 140, 170],
+            groundMain: [40, 100, 130],
+            groundStripe: [30, 90, 120]
+          },
+          4: { // Regenbogen
+            name: "Regenbogen",
+            skyTop: [255, 200, 255],
+            skyBottom: [200, 255, 255],
+            sunColor: [255, 255, 100],
+            mountainBack: [200, 150, 255],
+            mountainFront: [220, 180, 255],
+            groundMain: [150, 255, 200],
+            groundStripe: [130, 240, 180]
+          },
+          5: { // Höhle
+            name: "Höhle",
+            skyTop: [40, 35, 30],
+            skyBottom: [30, 25, 20],
+            sunColor: [200, 180, 100], // Fackel
+            mountainBack: [60, 50, 40],
+            mountainFront: [80, 70, 60],
+            groundMain: [50, 45, 40],
+            groundStripe: [40, 35, 30]
+          },
+          6: { // Weltraum
+            name: "Weltraum",
+            skyTop: [5, 5, 20],
+            skyBottom: [10, 5, 30],
+            sunColor: [200, 200, 255], // Planet
+            mountainBack: [30, 30, 50],
+            mountainFront: [50, 50, 70],
+            groundMain: [40, 40, 60],
+            groundStripe: [30, 30, 50]
+          },
+          7: { // Wüste
             name: "Wüste",
             skyTop: [255, 200, 150],
             skyBottom: [255, 150, 80],
@@ -224,7 +309,7 @@
             groundMain: [240, 200, 120],
             groundStripe: [220, 180, 100]
           },
-          3: { // Schnee-Berge
+          8: { // Schnee-Berge
             name: "Schnee-Berge",
             skyTop: [200, 230, 255],
             skyBottom: [150, 200, 255],
@@ -234,7 +319,7 @@
             groundMain: [240, 245, 255],
             groundStripe: [220, 230, 245]
           },
-          4: { // Sonnenuntergang
+          9: { // Sonnenuntergang
             name: "Sonnenuntergang",
             skyTop: [255, 150, 100],
             skyBottom: [255, 80, 120],
@@ -244,7 +329,7 @@
             groundMain: [100, 80, 60],
             groundStripe: [80, 60, 50]
           },
-          5: { // Nacht
+          10: { // Nacht
             name: "Nacht",
             skyTop: [20, 20, 60],
             skyBottom: [10, 10, 40],
@@ -281,8 +366,55 @@
         if (sunX < -100) sunX += width + 200;
         circle(sunX, 100, 80);
         
-        // Sterne bei Level 5 (Nacht)
-        if (level === 5) {
+        // Lava-Partikel bei Level 2 (Vulkan)
+        if (level === 2) {
+          fill(255, 100, 0, 150);
+          for (let i = 0; i < 30; i++) {
+            let px = (i * 157 + offset * 0.8) % width;
+            let py = height * 0.7 - ((i * 97 + offset * 0.5) % 100);
+            circle(px, py, random(3, 8));
+          }
+        }
+        
+        // Blasen bei Level 3 (Unterwasser)
+        if (level === 3) {
+          fill(255, 255, 255, 100);
+          for (let i = 0; i < 40; i++) {
+            let bx = (i * 131 + offset * 0.3) % width;
+            let by = height * 0.7 - ((i * 89 + offset * 0.7) % (height * 0.7));
+            circle(bx, by, random(5, 15));
+          }
+        }
+        
+        // Glitzer bei Level 4 (Regenbogen)
+        if (level === 4) {
+          for (let i = 0; i < 60; i++) {
+            let colors = [[255,100,100], [100,255,100], [100,100,255], [255,255,100], [255,100,255]];
+            let col = colors[i % colors.length];
+            fill(col[0], col[1], col[2], 150);
+            let gx = (i * 167 + offset * 0.6) % width;
+            let gy = (i * 113) % (height * 0.7);
+            circle(gx, gy, 3);
+          }
+        }
+        
+        // Sterne bei Level 6 (Weltraum)
+        if (level === 6) {
+          fill(255, 255, 255, 250);
+          for (let i = 0; i < 100; i++) {
+            let sx = (i * 139 + offset * 0.02) % width;
+            let sy = (i * 97) % (height * 0.7);
+            circle(sx, sy, random(1, 3));
+          }
+          // Leuchtende Planeten
+          fill(100, 255, 200, 100);
+          circle((300 + offset * 0.05) % (width + 200), 150, 60);
+          fill(255, 100, 200, 100);
+          circle((700 + offset * 0.03) % (width + 200), 250, 40);
+        }
+        
+        // Sterne bei Level 10 (Nacht)
+        if (level === 10) {
           fill(255, 255, 255, 200);
           for (let i = 0; i < 50; i++) {
             let sx = (i * 123 + offset * 0.05) % width;

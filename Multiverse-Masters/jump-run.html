@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+    <script>
+      // Spieler
+      let player = {
+        x: 100,
+        y: 0,
+        width: 40,
+        height: 50,
+        vx: 0,
+        vy: 0,
+        speed: 5,
+        jumpPower: 15,
+        onGround: false,
+        health: 3,
+        invincible: false,
+        invincibleTimer: 0,
+        direction: 1 // 1 = rechts, -1 = links
+      };
+
+      // Spielvariablen
+      let gravity = 0.8;
+      let platforms = [];
+      let enemies = [];
+      let coins = [];
+      let level = 1;
+      let maxLevel = 5;
+      let score = 0;
+      let gameOver = false;
+      let levelComplete = false;
+      let keys = {};
+      let cameraX = 0;
+      let levelWidth = 2000;
+      let goal = { x: 0, y: 0, width: 50, height: 80 };
+
+      // Audio
+      let audioContext;
+      let musicEnabled = true;
+
+      function setup() {
+        createCanvas(1200, 600);
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        loadLevel(level);
+      }
+
+      // Sound-Effekte
+      function playSoundJump() {
+        if (!musicEnabled) return;
+        let osc = audioContext.createOscillator();
+        let gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.value = 400;
+        osc.type = 'sine';
+        gain.gain.value = 0.1;
+        osc.start();
+        osc.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        osc.stop(audioContext.currentTime + 0.1);
+      }
+
+      function playSoundCoin() {
+        if (!musicEnabled) return;
+        [523, 659].forEach((freq, i) => {
+          setTimeout(() => {
+            let osc = audioContext.createOscillator();
+            let gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            gain.gain.value = 0.08;
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            osc.stop(audioContext.currentTime + 0.1);
+          }, i * 50);
+        });
+      }
+
+      function playSoundHit() {
+        if (!musicEnabled) return;
+        let osc = audioContext.createOscillator();
+        let gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.value = 150;
+        osc.type = 'sawtooth';
+        gain.gain.value = 0.15;
+        osc.start();
+        osc.frequency.exponentialRampToValueAtTime(80, audioContext.currentTime + 0.2);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+        osc.stop(audioContext.currentTime + 0.2);
+      }
+
+      function playSoundLevelComplete() {
+        if (!musicEnabled) return;
+        [523, 659, 784, 1047].forEach((freq, i) => {
+          setTimeout(() => {
+            let osc = audioContext.createOscillator();
+            let gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = freq;
+            osc.type = 'triangle';
+            gain.gain.value = 0.12;
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            osc.stop(audioContext.currentTime + 0.3);
+          }, i * 100);
+        });
+      }
+
+      // Level laden
+      function loadLevel(lvl) {
+        platforms = [];
+        enemies = [];
+        coins = [];
+        player.x = 100;
+        player.y = 100;
+        player.vx = 0;
+        player.vy = 0;
+        player.health = 3;
+        cameraX = 0;
+
+        if (lvl === 1) {
+          // Level 1: Einfach
+          levelWidth = 2000;
+          platforms.push({ x: 0, y: 500, width: 400, height: 20 });
+          platforms.push({ x: 500, y: 450, width: 150, height: 20 });
+          platforms.push({ x: 750, y: 400, width: 150, height: 20 });
+          platforms.push({ x: 1000, y: 350, width: 150, height: 20 });
+          platforms.push({ x: 1250, y: 400, width: 150, height: 20 });
+          platforms.push({ x: 1500, y: 500, width: 500, height: 20 });
+          
+          enemies.push({ x: 600, y: 400, width: 35, height: 35, vx: 2, minX: 500, maxX: 650, type: 'walk' });
+          enemies.push({ x: 1100, y: 300, width: 35, height: 35, vx: 2, minX: 1000, maxX: 1150, type: 'walk' });
+          
+          coins.push({ x: 550, y: 400, collected: false });
+          coins.push({ x: 800, y: 350, collected: false });
+          coins.push({ x: 1050, y: 300, collected: false });
+          coins.push({ x: 1300, y: 350, collected: false });
+          
+          goal.x = 1850;
+          goal.y = 420;
+        } 
+        else if (lvl === 2) {
+          // Level 2: Mehr Gegner
+          levelWidth = 2500;
+          platforms.push({ x: 0, y: 500, width: 300, height: 20 });
+          platforms.push({ x: 400, y: 450, width: 120, height: 20 });
+          platforms.push({ x: 600, y: 400, width: 120, height: 20 });
+          platforms.push({ x: 800, y: 350, width: 120, height: 20 });
+          platforms.push({ x: 1000, y: 300, width: 150, height: 20 });
+          platforms.push({ x: 1250, y: 350, width: 120, height: 20 });
+          platforms.push({ x: 1450, y: 400, width: 120, height: 20 });
+          platforms.push({ x: 1650, y: 450, width: 150, height: 20 });
+          platforms.push({ x: 1900, y: 500, width: 600, height: 20 });
+          
+          enemies.push({ x: 450, y: 400, width: 35, height: 35, vx: 2.5, minX: 400, maxX: 520, type: 'walk' });
+          enemies.push({ x: 850, y: 300, width: 35, height: 35, vx: 2.5, minX: 800, maxX: 920, type: 'walk' });
+          enemies.push({ x: 1300, y: 300, width: 35, height: 35, vx: 3, minX: 1250, maxX: 1370, type: 'walk' });
+          enemies.push({ x: 1700, y: 400, width: 35, height: 35, vx: 2, minX: 1650, maxX: 1800, type: 'walk' });
+          
+          coins.push({ x: 450, y: 400, collected: false });
+          coins.push({ x: 650, y: 350, collected: false });
+          coins.push({ x: 850, y: 300, collected: false });
+          coins.push({ x: 1050, y: 250, collected: false });
+          coins.push({ x: 1300, y: 300, collected: false });
+          coins.push({ x: 1500, y: 350, collected: false });
+          
+          goal.x = 2350;
+          goal.y = 420;
+        }
+        else if (lvl === 3) {
+          // Level 3: Fliegende Gegner
+          levelWidth = 2800;
+          platforms.push({ x: 0, y: 500, width: 250, height: 20 });
+          platforms.push({ x: 350, y: 450, width: 100, height: 20 });
+          platforms.push({ x: 550, y: 400, width: 100, height: 20 });
+          platforms.push({ x: 750, y: 350, width: 100, height: 20 });
+          platforms.push({ x: 950, y: 300, width: 150, height: 20 });
+          platforms.push({ x: 1200, y: 250, width: 100, height: 20 });
+          platforms.push({ x: 1400, y: 300, width: 100, height: 20 });
+          platforms.push({ x: 1600, y: 350, width: 100, height: 20 });
+          platforms.push({ x: 1800, y: 400, width: 150, height: 20 });
+          platforms.push({ x: 2050, y: 450, width: 150, height: 20 });
+          platforms.push({ x: 2300, y: 500, width: 500, height: 20 });
+          
+          enemies.push({ x: 400, y: 400, width: 35, height: 35, vx: 2, minX: 350, maxX: 450, type: 'walk' });
+          enemies.push({ x: 800, y: 300, width: 35, height: 35, vx: 2.5, minX: 750, maxX: 850, type: 'walk' });
+          enemies.push({ x: 1250, y: 200, width: 35, height: 35, vx: 3, minX: 1200, maxX: 1300, type: 'walk' });
+          enemies.push({ x: 600, y: 250, width: 30, height: 30, vx: 0, vy: 2, minY: 200, maxY: 350, type: 'fly' });
+          enemies.push({ x: 1100, y: 200, width: 30, height: 30, vx: 0, vy: 2.5, minY: 150, maxY: 300, type: 'fly' });
+          enemies.push({ x: 1700, y: 250, width: 30, height: 30, vx: 0, vy: 2, minY: 200, maxY: 350, type: 'fly' });
+          
+          coins.push({ x: 400, y: 400, collected: false });
+          coins.push({ x: 600, y: 350, collected: false });
+          coins.push({ x: 800, y: 300, collected: false });
+          coins.push({ x: 1000, y: 250, collected: false });
+          coins.push({ x: 1250, y: 200, collected: false });
+          coins.push({ x: 1450, y: 250, collected: false });
+          coins.push({ x: 1650, y: 300, collected: false });
+          coins.push({ x: 1850, y: 350, collected: false });
+          
+          goal.x = 2650;
+          goal.y = 420;
+        }
+        else if (lvl === 4) {
+          // Level 4: Schwer mit vielen Hindernissen
+          levelWidth = 3200;
+          platforms.push({ x: 0, y: 500, width: 200, height: 20 });
+          platforms.push({ x: 300, y: 450, width: 80, height: 20 });
+          platforms.push({ x: 450, y: 400, width: 80, height: 20 });
+          platforms.push({ x: 600, y: 350, width: 80, height: 20 });
+          platforms.push({ x: 750, y: 300, width: 100, height: 20 });
+          platforms.push({ x: 950, y: 250, width: 80, height: 20 });
+          platforms.push({ x: 1100, y: 300, width: 80, height: 20 });
+          platforms.push({ x: 1250, y: 350, width: 100, height: 20 });
+          platforms.push({ x: 1450, y: 300, width: 80, height: 20 });
+          platforms.push({ x: 1600, y: 250, width: 80, height: 20 });
+          platforms.push({ x: 1750, y: 300, width: 100, height: 20 });
+          platforms.push({ x: 1950, y: 350, width: 80, height: 20 });
+          platforms.push({ x: 2100, y: 400, width: 80, height: 20 });
+          platforms.push({ x: 2250, y: 450, width: 100, height: 20 });
+          platforms.push({ x: 2450, y: 400, width: 80, height: 20 });
+          platforms.push({ x: 2600, y: 450, width: 150, height: 20 });
+          platforms.push({ x: 2850, y: 500, width: 400, height: 20 });
+          
+          enemies.push({ x: 350, y: 400, width: 35, height: 35, vx: 3, minX: 300, maxX: 380, type: 'walk' });
+          enemies.push({ x: 650, y: 300, width: 35, height: 35, vx: 3, minX: 600, maxX: 680, type: 'walk' });
+          enemies.push({ x: 800, y: 250, width: 35, height: 35, vx: 3.5, minX: 750, maxX: 850, type: 'walk' });
+          enemies.push({ x: 1150, y: 250, width: 35, height: 35, vx: 3, minX: 1100, maxX: 1180, type: 'walk' });
+          enemies.push({ x: 1500, y: 250, width: 35, height: 35, vx: 3.5, minX: 1450, maxX: 1530, type: 'walk' });
+          enemies.push({ x: 1800, y: 250, width: 35, height: 35, vx: 3, minX: 1750, maxX: 1850, type: 'walk' });
+          enemies.push({ x: 2150, y: 350, width: 35, height: 35, vx: 3, minX: 2100, maxX: 2180, type: 'walk' });
+          enemies.push({ x: 500, y: 250, width: 30, height: 30, vx: 0, vy: 3, minY: 200, maxY: 350, type: 'fly' });
+          enemies.push({ x: 850, y: 200, width: 30, height: 30, vx: 0, vy: 3, minY: 150, maxY: 300, type: 'fly' });
+          enemies.push({ x: 1350, y: 250, width: 30, height: 30, vx: 0, vy: 3, minY: 200, maxY: 350, type: 'fly' });
+          enemies.push({ x: 1850, y: 200, width: 30, height: 30, vx: 0, vy: 3, minY: 150, maxY: 300, type: 'fly' });
+          enemies.push({ x: 2350, y: 300, width: 30, height: 30, vx: 0, vy: 2.5, minY: 250, maxY: 400, type: 'fly' });
+          
+          coins.push({ x: 350, y: 400, collected: false });
+          coins.push({ x: 500, y: 350, collected: false });
+          coins.push({ x: 650, y: 300, collected: false });
+          coins.push({ x: 800, y: 250, collected: false });
+          coins.push({ x: 1000, y: 200, collected: false });
+          coins.push({ x: 1150, y: 250, collected: false });
+          coins.push({ x: 1300, y: 300, collected: false });
+          coins.push({ x: 1500, y: 250, collected: false });
+          coins.push({ x: 1650, y: 200, collected: false });
+          coins.push({ x: 1800, y: 250, collected: false });
+          coins.push({ x: 2000, y: 300, collected: false });
+          coins.push({ x: 2150, y: 350, collected: false });
+          
+          goal.x = 3050;
+          goal.y = 420;
+        }
+        else if (lvl === 5) {
+          // Level 5: Boss Level - sehr schwer
+          levelWidth = 3500;
+          platforms.push({ x: 0, y: 500, width: 150, height: 20 });
+          platforms.push({ x: 250, y: 450, width: 70, height: 20 });
+          platforms.push({ x: 400, y: 400, width: 70, height: 20 });
+          platforms.push({ x: 550, y: 350, width: 70, height: 20 });
+          platforms.push({ x: 700, y: 300, width: 80, height: 20 });
+          platforms.push({ x: 850, y: 250, width: 70, height: 20 });
+          platforms.push({ x: 1000, y: 200, width: 80, height: 20 });
+          platforms.push({ x: 1150, y: 250, width: 70, height: 20 });
+          platforms.push({ x: 1300, y: 300, width: 80, height: 20 });
+          platforms.push({ x: 1450, y: 250, width: 70, height: 20 });
+          platforms.push({ x: 1600, y: 200, width: 70, height: 20 });
+          platforms.push({ x: 1750, y: 250, width: 80, height: 20 });
+          platforms.push({ x: 1900, y: 300, width: 70, height: 20 });
+          platforms.push({ x: 2050, y: 350, width: 70, height: 20 });
+          platforms.push({ x: 2200, y: 300, width: 80, height: 20 });
+          platforms.push({ x: 2350, y: 250, width: 70, height: 20 });
+          platforms.push({ x: 2500, y: 300, width: 70, height: 20 });
+          platforms.push({ x: 2650, y: 350, width: 80, height: 20 });
+          platforms.push({ x: 2800, y: 400, width: 70, height: 20 });
+          platforms.push({ x: 2950, y: 450, width: 100, height: 20 });
+          platforms.push({ x: 3150, y: 500, width: 400, height: 20 });
+          
+          // Viele Gegner
+          for (let i = 0; i < 12; i++) {
+            let px = 300 + i * 250;
+            enemies.push({ x: px, y: 300, width: 35, height: 35, vx: 3.5, minX: px - 30, maxX: px + 30, type: 'walk' });
+          }
+          
+          // Viele fliegende Gegner
+          for (let i = 0; i < 10; i++) {
+            let px = 450 + i * 300;
+            enemies.push({ x: px, y: 250, width: 30, height: 30, vx: 0, vy: 3.5, minY: 150, maxY: 350, type: 'fly' });
+          }
+          
+          // Viele Münzen
+          for (let i = 0; i < 15; i++) {
+            let cx = 300 + i * 200;
+            let cy = 250 - (i % 3) * 50;
+            coins.push({ x: cx, y: cy, collected: false });
+          }
+          
+          goal.x = 3400;
+          goal.y = 420;
+        }
+      }
+
+      // Zeichne Hintergrund
+      function drawBackground() {
+        let colors = [
+          [[135, 206, 250], [70, 130, 255]], // Level 1: Blau
+          [[255, 200, 150], [255, 150, 80]], // Level 2: Orange
+          [[200, 230, 255], [150, 200, 255]], // Level 3: Hell Blau
+          [[255, 150, 100], [255, 80, 120]], // Level 4: Rot
+          [[40, 35, 30], [80, 70, 60]]  // Level 5: Dunkel
+        ];
+        
+        let col = colors[level - 1] || colors[0];
+        for (let i = 0; i < height; i++) {
+          let inter = map(i, 0, height, 0, 1);
+          let c = lerpColor(
+            color(col[0][0], col[0][1], col[0][2]),
+            color(col[1][0], col[1][1], col[1][2]),
+            inter
+          );
+          stroke(c);
+          line(0, i, width, i);
+        }
+        noStroke();
+      }
+
+      function draw() {
+        if (gameOver) {
+          background(50);
+          fill(255, 0, 0);
+          textSize(64);
+          textAlign(CENTER, CENTER);
+          text("GAME OVER", width/2, height/2 - 60);
+          fill(255);
+          textSize(24);
+          text("Score: " + score, width/2, height/2);
+          text("Level erreicht: " + level, width/2, height/2 + 40);
+          textSize(18);
+          text("Drücke 'R' zum Neustarten", width/2, height/2 + 80);
+          return;
+        }
+
+        if (levelComplete) {
+          background(50, 150, 50);
+          fill(255, 255, 0);
+          textSize(64);
+          textAlign(CENTER, CENTER);
+          text("LEVEL GESCHAFFT!", width/2, height/2 - 60);
+          fill(255);
+          textSize(24);
+          text("Score: " + score, width/2, height/2);
+          if (level < maxLevel) {
+            textSize(18);
+            text("Drücke 'ENTER' für nächstes Level", width/2, height/2 + 50);
+          } else {
+            textSize(32);
+            text("ALLE LEVEL GESCHAFFT!", width/2, height/2 + 50);
+            textSize(18);
+            text("Drücke 'R' zum Neustarten", width/2, height/2 + 90);
+          }
+          return;
+        }
+
+        // Hintergrund
+        drawBackground();
+
+        // Kamera folgt Spieler
+        cameraX = player.x - width / 3;
+        cameraX = constrain(cameraX, 0, levelWidth - width);
+
+        push();
+        translate(-cameraX, 0);
+
+        // Ziel zeichnen
+        fill(255, 215, 0);
+        rect(goal.x, goal.y, goal.width, goal.height);
+        fill(255, 255, 0);
+        textSize(16);
+        textAlign(CENTER);
+        text("ZIEL", goal.x + goal.width/2, goal.y + goal.height/2);
+
+        // Plattformen zeichnen
+        fill(100, 200, 100);
+        for (let p of platforms) {
+          rect(p.x, p.y, p.width, p.height);
+          // Gras-Effekt
+          fill(80, 180, 80);
+          for (let i = 0; i < p.width; i += 10) {
+            rect(p.x + i, p.y, 5, p.height);
+          }
+          fill(100, 200, 100);
+        }
+
+        // Münzen zeichnen
+        for (let coin of coins) {
+          if (!coin.collected) {
+            fill(255, 215, 0);
+            circle(coin.x, coin.y, 20);
+            fill(255, 255, 0);
+            circle(coin.x, coin.y, 12);
+          }
+        }
+
+        // Gegner zeichnen und bewegen
+        for (let enemy of enemies) {
+          if (enemy.type === 'walk') {
+            enemy.x += enemy.vx;
+            if (enemy.x <= enemy.minX || enemy.x >= enemy.maxX) {
+              enemy.vx *= -1;
+            }
+            
+            // Gegner zeichnen (Monster)
+            fill(200, 50, 50);
+            rect(enemy.x, enemy.y, enemy.width, enemy.height);
+            fill(255, 0, 0);
+            rect(enemy.x + 5, enemy.y + 5, enemy.width - 10, enemy.height - 10);
+            // Augen
+            fill(255, 255, 0);
+            circle(enemy.x + 10, enemy.y + 12, 8);
+            circle(enemy.x + enemy.width - 10, enemy.y + 12, 8);
+            fill(0);
+            circle(enemy.x + 10, enemy.y + 12, 4);
+            circle(enemy.x + enemy.width - 10, enemy.y + 12, 4);
+          } else if (enemy.type === 'fly') {
+            enemy.y += enemy.vy;
+            if (enemy.y <= enemy.minY || enemy.y >= enemy.maxY) {
+              enemy.vy *= -1;
+            }
+            
+            // Fliegender Gegner (Vogel/Fledermaus)
+            fill(100, 50, 150);
+            ellipse(enemy.x, enemy.y, enemy.width, enemy.height);
+            fill(150, 100, 200);
+            ellipse(enemy.x, enemy.y, enemy.width - 10, enemy.height - 10);
+            // Flügel
+            fill(80, 40, 120);
+            let wingOffset = sin(frameCount * 0.2) * 8;
+            ellipse(enemy.x - 15, enemy.y + wingOffset, 15, 8);
+            ellipse(enemy.x + 15, enemy.y + wingOffset, 15, 8);
+            // Augen
+            fill(255, 0, 0);
+            circle(enemy.x - 5, enemy.y - 3, 5);
+            circle(enemy.x + 5, enemy.y - 3, 5);
+          }
+        }
+
+        // Spieler zeichnen
+        if (player.invincible && frameCount % 10 < 5) {
+          // Blinken wenn unverwundbar
+        } else {
+          // Körper
+          fill(0, 150, 255);
+          rect(player.x, player.y, player.width, player.height);
+          // Gesicht
+          fill(255, 200, 150);
+          rect(player.x + 5, player.y + 5, player.width - 10, 25);
+          // Augen
+          fill(0);
+          circle(player.x + 12, player.y + 15, 5);
+          circle(player.x + player.width - 12, player.y + 15, 5);
+          // Mund
+          noFill();
+          stroke(0);
+          strokeWeight(2);
+          arc(player.x + player.width/2, player.y + 20, 15, 10, 0, PI);
+          noStroke();
+        }
+
+        pop();
+
+        // Spieler Physik
+        player.vy += gravity;
+        player.y += player.vy;
+        player.x += player.vx;
+
+        // Bewegung
+        if (keys['ArrowLeft'] || keys['a']) {
+          player.vx = -player.speed;
+          player.direction = -1;
+        } else if (keys['ArrowRight'] || keys['d']) {
+          player.vx = player.speed;
+          player.direction = 1;
+        } else {
+          player.vx = 0;
+        }
+
+        // Boden-Kollision
+        player.onGround = false;
+        for (let p of platforms) {
+          if (player.x + player.width > p.x && 
+              player.x < p.x + p.width &&
+              player.y + player.height >= p.y &&
+              player.y + player.height <= p.y + 20 &&
+              player.vy >= 0) {
+            player.y = p.y - player.height;
+            player.vy = 0;
+            player.onGround = true;
+          }
+        }
+
+        // Münzen einsammeln
+        for (let coin of coins) {
+          if (!coin.collected) {
+            let d = dist(player.x + player.width/2, player.y + player.height/2, coin.x, coin.y);
+            if (d < 30) {
+              coin.collected = true;
+              score += 10;
+              playSoundCoin();
+            }
+          }
+        }
+
+        // Gegner-Kollision
+        if (!player.invincible) {
+          for (let enemy of enemies) {
+            if (player.x + player.width > enemy.x &&
+                player.x < enemy.x + enemy.width &&
+                player.y + player.height > enemy.y &&
+                player.y < enemy.y + enemy.height) {
+              player.health--;
+              player.invincible = true;
+              player.invincibleTimer = 60;
+              playSoundHit();
+              if (player.health <= 0) {
+                gameOver = true;
+              }
+            }
+          }
+        }
+
+        // Unverwundbarkeit Timer
+        if (player.invincible) {
+          player.invincibleTimer--;
+          if (player.invincibleTimer <= 0) {
+            player.invincible = false;
+          }
+        }
+
+        // Ziel erreicht
+        if (player.x + player.width > goal.x &&
+            player.x < goal.x + goal.width &&
+            player.y + player.height > goal.y &&
+            player.y < goal.y + goal.height) {
+          levelComplete = true;
+          score += 100;
+          playSoundLevelComplete();
+        }
+
+        // Aus dem Level gefallen
+        if (player.y > height + 100) {
+          player.health = 0;
+          gameOver = true;
+        }
+
+        // Grenzen
+        player.x = constrain(player.x, 0, levelWidth - player.width);
+
+        // UI zeichnen
+        fill(255);
+        stroke(0);
+        strokeWeight(3);
+        textAlign(LEFT);
+        textSize(20);
+        text("Level: " + level, 20, 30);
+        text("Score: " + score, 20, 60);
+        text("Leben: " + "❤️".repeat(player.health), 20, 90);
+        text("Steuerung: ← → oder A D = Bewegen | Leertaste = Springen", 20, height - 20);
+        noStroke();
+      }
+
+      function keyPressed() {
+        keys[key] = true;
+        
+        if ((keyCode === 32 || key === ' ') && player.onGround && !gameOver && !levelComplete) {
+          player.vy = -player.jumpPower;
+          playSoundJump();
+        }
+
+        if (key === 'r' || key === 'R') {
+          gameOver = false;
+          levelComplete = false;
+          score = 0;
+          level = 1;
+          loadLevel(level);
+        }
+
+        if (keyCode === ENTER && levelComplete) {
+          if (level < maxLevel) {
+            level++;
+            levelComplete = false;
+            loadLevel(level);
+          }
+        }
+
+        if (key === 'm' || key === 'M') {
+          musicEnabled = !musicEnabled;
+        }
+      }
+
+      function keyReleased() {
+        keys[key] = false;
+      }
+    </script>
+  </body>
+</html>
+

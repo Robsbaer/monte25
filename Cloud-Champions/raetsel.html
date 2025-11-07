@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rätselspiel - Monte 25</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .puzzle-content {
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .puzzle-area {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .puzzle-question {
+            font-size: 1.3em;
+            color: #495057;
+            margin-bottom: 25px;
+            line-height: 1.6;
+            font-weight: 500;
+        }
+
+        .puzzle-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .answer-input {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            border: 3px solid #e9ecef;
+            border-radius: 10px;
+            transition: all 0.3s;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .answer-input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 600;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+        }
+
+        .btn-hint {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .feedback {
+            margin-top: 20px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .feedback.correct {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 5px solid #10b981;
+            display: block;
+        }
+
+        .feedback.incorrect {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 5px solid #ef4444;
+            display: block;
+        }
+
+        .hint-box {
+            background: #fef3c7;
+            border-left: 5px solid #f59e0b;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+            color: #92400e;
+            font-weight: 500;
+        }
+
+        .hint-box.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        .progress-bar {
+            background: #e9ecef;
+            height: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 20px 30px;
+        }
+
+        .progress-fill {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            height: 100%;
+            transition: width 0.5s ease;
+            border-radius: 5px;
+        }
+
+        .puzzle-counter {
+            text-align: center;
+            color: #6c757d;
+            font-size: 1.1em;
+            margin: 10px 0;
+            font-weight: 600;
+        }
+
+        .completion-screen {
+            text-align: center;
+            padding: 50px 30px;
+        }
+
+        .completion-screen h2 {
+            color: #6366f1;
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+
+        .completion-screen .score-display {
+            font-size: 2em;
+            color: #495057;
+            margin: 30px 0;
+            font-weight: 700;
+        }
+
+        .completion-screen .rating {
+            font-size: 4em;
+            margin: 20px 0;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .multiple-choice {
+            display: grid;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .choice-btn {
+            background: white;
+            border: 3px solid #e9ecef;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .choice-btn:hover {
+            border-color: #6366f1;
+            background: #f8f9fa;
+            transform: translateX(5px);
+        }
+
+        .choice-btn.selected {
+            border-color: #6366f1;
+            background: #eef2ff;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .puzzle-content {
+                padding: 15px;
+            }
+
+            .puzzle-area {
+                padding: 20px;
+            }
+
+            .puzzle-question {
+                font-size: 1.1em;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>🧩 Rätselspiel</h1>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">Punkte:</span>
+                    <span id="score" class="stat-value">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Richtig:</span>
+                    <span id="correct" class="stat-value">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Hinweise:</span>
+                    <span id="hints" class="stat-value">3</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="puzzle-counter" id="puzzleCounter">Rätsel 1 von 10</div>
+
+        <div class="puzzle-content" id="gameArea">
+            <div class="puzzle-area">
+                <div class="puzzle-question" id="puzzleQuestion"></div>
+                <div id="puzzleInput"></div>
+                <div class="hint-box" id="hintBox"></div>
+                <div class="feedback" id="feedback"></div>
+                <div class="btn-group">
+                    <button class="btn" id="checkBtn">Antwort überprüfen</button>
+                    <button class="btn btn-hint" id="hintBtn">💡 Hinweis</button>
+                    <button class="btn btn-secondary" id="skipBtn">Überspringen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const puzzles = [
+            {
+                type: 'text',
+                question: 'Ich habe Städte, aber keine Häuser. Ich habe Berge, aber keine Bäume. Ich habe Wasser, aber keine Fische. Was bin ich?',
+                answer: 'landkarte',
+                alternatives: ['karte', 'weltkarte', 'stadtkarte', 'straßenkarte'],
+                hint: 'Du verwendest mich, um den Weg zu finden.',
+                points: 10
+            },
+            {
+                type: 'math',
+                question: 'Wenn 5 Katzen 5 Mäuse in 5 Minuten fangen, wie viele Minuten brauchen dann 100 Katzen, um 100 Mäuse zu fangen?',
+                answer: '5',
+                hint: 'Überlege, wie viele Minuten EINE Katze braucht, um EINE Maus zu fangen.',
+                points: 15
+            },
+            {
+                type: 'logic',
+                question: 'Maria\'s Vater hat 5 Töchter: Nana, Nene, Nini, Nono. Wie heißt die fünfte Tochter?',
+                answer: 'maria',
+                hint: 'Lies die Frage noch einmal genau durch - der Name steht schon dort!',
+                points: 10
+            },
+            {
+                type: 'text',
+                question: 'Was wird nass, wenn es trocknet?',
+                answer: 'handtuch',
+                alternatives: ['badetuch', 'tuch'],
+                hint: 'Du benutzt es nach dem Duschen.',
+                points: 10
+            },
+            {
+                type: 'math',
+                question: 'Ein Bauer hat 15 Schafe. Alle außer 8 sterben. Wie viele Schafe hat er noch?',
+                answer: '8',
+                hint: '"Alle außer 8" bedeutet, dass 8 übrig bleiben.',
+                points: 10
+            },
+            {
+                type: 'logic',
+                question: 'Du bist Busfahrer. An der ersten Haltestelle steigen 5 Leute ein. An der zweiten steigen 3 ein und 2 aus. An der dritten steigen 4 ein und 1 aus. Wie alt ist der Busfahrer?',
+                answer: 'personalisiert',
+                hint: 'Wer ist der Busfahrer? Lies den ersten Satz noch einmal!',
+                points: 20,
+                customCheck: true
+            },
+            {
+                type: 'text',
+                question: 'Je mehr davon es gibt, desto weniger siehst du. Was ist es?',
+                answer: 'dunkelheit',
+                alternatives: ['finsternis', 'nacht', 'nebel', 'schatten'],
+                hint: 'Das Gegenteil von Licht.',
+                points: 10
+            },
+            {
+                type: 'math',
+                question: 'Wenn ein Ziegelstein 1 kg wiegt plus ein halber Ziegelstein, wie viel wiegt dann ein ganzer Ziegelstein?',
+                answer: '2',
+                hint: 'Setze eine Gleichung auf: x = 1 + x/2',
+                points: 15
+            },
+            {
+                type: 'logic',
+                question: 'Ein Mann schaut auf ein Foto und sagt: "Ich habe weder Brüder noch Schwestern, aber der Vater dieses Mannes ist der Sohn meines Vaters." Wessen Foto sieht er sich an?',
+                answer: 'sohn',
+                alternatives: ['sein sohn', 'seines sohnes', 'seinem sohn'],
+                hint: '"Der Sohn meines Vaters" bin ich selbst...',
+                points: 20
+            },
+            {
+                type: 'text',
+                question: 'Was hat ein Auge, aber kann nicht sehen?',
+                answer: 'nadel',
+                alternatives: ['nähnadel', 'stricknadel'],
+                hint: 'Du benutzt es zum Nähen.',
+                points: 10
+            }
+        ];
+
+        let currentPuzzle = 0;
+        let score = 0;
+        let correctAnswers = 0;
+        let hintsLeft = 3;
+        let hintUsedForCurrent = false;
+
+        const puzzleQuestion = document.getElementById('puzzleQuestion');
+        const puzzleInput = document.getElementById('puzzleInput');
+        const hintBox = document.getElementById('hintBox');
+        const feedback = document.getElementById('feedback');
+        const checkBtn = document.getElementById('checkBtn');
+        const hintBtn = document.getElementById('hintBtn');
+        const skipBtn = document.getElementById('skipBtn');
+        const scoreDisplay = document.getElementById('score');
+        const correctDisplay = document.getElementById('correct');
+        const hintsDisplay = document.getElementById('hints');
+        const puzzleCounter = document.getElementById('puzzleCounter');
+        const progressFill = document.getElementById('progressFill');
+        const gameArea = document.getElementById('gameArea');
+
+        function loadPuzzle() {
+            if (currentPuzzle >= puzzles.length) {
+                showCompletion();
+                return;
+            }
+
+            const puzzle = puzzles[currentPuzzle];
+            puzzleQuestion.textContent = puzzle.question;
+            hintBox.textContent = puzzle.hint;
+            hintBox.classList.remove('show');
+            feedback.className = 'feedback';
+            hintUsedForCurrent = false;
+
+            puzzleInput.innerHTML = '<input type="text" class="answer-input" id="answerInput" placeholder="Deine Antwort...">';
+            
+            const input = document.getElementById('answerInput');
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    checkAnswer();
+                }
+            });
+            input.focus();
+
+            updateProgress();
+        }
+
+        function checkAnswer() {
+            const puzzle = puzzles[currentPuzzle];
+            const userAnswer = document.getElementById('answerInput').value.toLowerCase().trim();
+
+            if (!userAnswer) {
+                feedback.className = 'feedback incorrect';
+                feedback.textContent = '❌ Bitte gib eine Antwort ein!';
+                return;
+            }
+
+            let isCorrect = false;
+
+            if (puzzle.customCheck) {
+                // Für personalisierte Antworten (Busfahrer-Rätsel)
+                if (/^\d+$/.test(userAnswer)) {
+                    isCorrect = true;
+                }
+            } else {
+                isCorrect = userAnswer === puzzle.answer || 
+                           (puzzle.alternatives && puzzle.alternatives.includes(userAnswer));
+            }
+
+            if (isCorrect) {
+                let pointsEarned = puzzle.points;
+                if (hintUsedForCurrent) {
+                    pointsEarned = Math.floor(pointsEarned / 2);
+                }
+                
+                score += pointsEarned;
+                correctAnswers++;
+                feedback.className = 'feedback correct';
+                feedback.textContent = `✅ Richtig! +${pointsEarned} Punkte`;
+                
+                scoreDisplay.textContent = score;
+                correctDisplay.textContent = correctAnswers;
+
+                setTimeout(() => {
+                    currentPuzzle++;
+                    loadPuzzle();
+                }, 2000);
+            } else {
+                feedback.className = 'feedback incorrect';
+                feedback.textContent = '❌ Leider falsch. Versuch es noch einmal!';
+            }
+        }
+
+        function showHint() {
+            if (hintsLeft > 0 && !hintUsedForCurrent) {
+                hintBox.classList.add('show');
+                hintsLeft--;
+                hintUsedForCurrent = true;
+                hintsDisplay.textContent = hintsLeft;
+                
+                if (hintsLeft === 0) {
+                    hintBtn.disabled = true;
+                    hintBtn.style.opacity = '0.5';
+                    hintBtn.style.cursor = 'not-allowed';
+                }
+            } else if (hintUsedForCurrent) {
+                feedback.className = 'feedback incorrect';
+                feedback.textContent = '💡 Du hast bereits einen Hinweis für dieses Rätsel verwendet!';
+            } else {
+                feedback.className = 'feedback incorrect';
+                feedback.textContent = '💡 Keine Hinweise mehr verfügbar!';
+            }
+        }
+
+        function skipPuzzle() {
+            feedback.className = 'feedback incorrect';
+            feedback.textContent = '⏭️ Rätsel übersprungen. Keine Punkte.';
+            
+            setTimeout(() => {
+                currentPuzzle++;
+                loadPuzzle();
+            }, 1500);
+        }
+
+        function updateProgress() {
+            const progress = ((currentPuzzle) / puzzles.length) * 100;
+            progressFill.style.width = progress + '%';
+            puzzleCounter.textContent = `Rätsel ${currentPuzzle + 1} von ${puzzles.length}`;
+        }
+
+        function showCompletion() {
+            const percentage = (correctAnswers / puzzles.length) * 100;
+            let rating = '';
+            let ratingEmoji = '';
+
+            if (percentage === 100) {
+                rating = 'Perfekt! Du bist ein Rätselmeister! 🏆';
+                ratingEmoji = '🏆⭐🎉';
+            } else if (percentage >= 80) {
+                rating = 'Ausgezeichnet! Sehr gut gemacht! 🌟';
+                ratingEmoji = '🌟🌟🌟';
+            } else if (percentage >= 60) {
+                rating = 'Gut gemacht! Weiter so! 👍';
+                ratingEmoji = '👍👍';
+            } else if (percentage >= 40) {
+                rating = 'Nicht schlecht! Übung macht den Meister! 💪';
+                ratingEmoji = '💪';
+            } else {
+                rating = 'Versuch es noch einmal! Du schaffst das! 🎯';
+                ratingEmoji = '🎯';
+            }
+
+            gameArea.innerHTML = `
+                <div class="completion-screen">
+                    <h2>🎊 Spiel beendet! 🎊</h2>
+                    <div class="rating">${ratingEmoji}</div>
+                    <div class="score-display">
+                        ${correctAnswers} von ${puzzles.length} Rätseln gelöst
+                    </div>
+                    <div class="score-display">
+                        ${score} Punkte erreicht
+                    </div>
+                    <p style="font-size: 1.5em; color: #6366f1; margin: 20px 0;">${rating}</p>
+                    <button class="btn" onclick="location.reload()">🔄 Nochmal spielen</button>
+                </div>
+            `;
+        }
+
+        checkBtn.addEventListener('click', checkAnswer);
+        hintBtn.addEventListener('click', showHint);
+        skipBtn.addEventListener('click', skipPuzzle);
+
+        // Spiel starten
+        loadPuzzle();
+    </script>
+</body>
+</html>
+

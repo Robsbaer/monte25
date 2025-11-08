@@ -10,19 +10,21 @@ wie einfache Spiele programmiert werden können – mit Unterstützung durch **K
 - Bewusster Umgang mit KI
 
 ## 🌐 Online spielen
-Die Spiele können direkt im Browser gespielt werden:
+Die vorbereiteten Spiele können direkt im Browser gespielt werden:
 - 🎯 **Springender Ball:** <https://robsbaer.github.io/monte25/ball.html>
 - 👥 **Teamgenerator:** <https://robsbaer.github.io/monte25/teams.html>
-
-Die weiteren, von Euch entwickelten Spiele gibt es hier:
-- 🏠 **Projektseite:** <https://robsbaer.github.io/monte25/>
+- 🏃 **Jump'n'Run:** <https://robsbaer.github.io/monte25/jumpnrun.html>
+- 🗼 **Tower Defense:** <https://robsbaer.github.io/monte25/tower-defense.html>
 
 ## 🎮 Team-Spiele
+
+Nachfolgend findet ihr alle Spiele, die ihr im Team entwickelt habt. 
+Die vorgestellten Spiele sind mit einem Stern ⭐ markiert.
 
 ### 🏆 Champion-League
 Die Spiele des Teams Champion-League können direkt im Browser gespielt werden:
 - 🍪 **Cookie Clicker:** <https://robsbaer.github.io/monte25/Champion-League/cookie_clicker.html>
-- 🐦 **Flappy Bird:** <https://robsbaer.github.io/monte25/Champion-League/flappy_bird.html>
+- 🐦 **Flappy Bird** ⭐ <https://robsbaer.github.io/monte25/Champion-League/flappy_bird.html>
 - ⚽ **Football:** <https://robsbaer.github.io/monte25/Champion-League/football.html>
 - 🌱 **Grow Garden:** <https://robsbaer.github.io/monte25/Champion-League/grow-garden.html>
 - 🎮 **Let's Try Game:** <https://robsbaer.github.io/monte25/Champion-League/letstryyyy_game.html>
@@ -31,7 +33,7 @@ Die Spiele des Teams Champion-League können direkt im Browser gespielt werden:
 
 ### ☁️ Cloud-Champions
 Die Spiele des Teams Cloud-Champions können direkt im Browser gespielt werden:
-- 🏠 **Hauptseite:** <https://robsbaer.github.io/monte25/Cloud-Champions/index.html>
+- 🏠 **Jump'n'Run** ⭐ <https://robsbaer.github.io/monte25/Cloud-Champions/index.html>
 - 🏗️ **Bauspiel:** <https://robsbaer.github.io/monte25/Cloud-Champions/bauspiel.html>
 - 🏃 **Jump'n'Run:** <https://robsbaer.github.io/monte25/Cloud-Champions/jumpnrun.html>
 - ⚔️ **Kampf-Bauspiel:** <https://robsbaer.github.io/monte25/Cloud-Champions/kampfbauspiel.html>
@@ -41,7 +43,7 @@ Die Spiele des Teams Cloud-Champions können direkt im Browser gespielt werden:
 ### 🌌 Multiverse-Masters
 Die Spiele des Teams Multiverse-Masters können direkt im Browser gespielt werden:
 - 🐾 **Adopt Me:** <https://robsbaer.github.io/monte25/Multiverse-Masters/adopt-me.html>
-- ⚽ **Ball:** <https://robsbaer.github.io/monte25/Multiverse-Masters/ball.html>
+- ⚽ **Ball** ⭐ <https://robsbaer.github.io/monte25/Multiverse-Masters/ball.html>
 - 👊 **Gojo:** <https://robsbaer.github.io/monte25/Multiverse-Masters/gojo.html>
 - 🐍 **Snake.io:** <https://robsbaer.github.io/monte25/Multiverse-Masters/snake-io.html>
 
@@ -55,7 +57,7 @@ Die Spiele des Teams WiFi-Masters können direkt im Browser gespielt werden:
 - 🎮 **Roblox Offline:** <https://robsbaer.github.io/monte25/WiFi-Masters/roblox-offline.html>
 - 🪜 **Roblox Platform:** <https://robsbaer.github.io/monte25/WiFi-Masters/roblox-platform.html>
 - 🐍 **Snake.io:** <https://robsbaer.github.io/monte25/WiFi-Masters/snake-io.html>
-- 🦁 **Tier Adventure:** <https://robsbaer.github.io/monte25/WiFi-Masters/tier-adventure.html>
+- 🦁 **Tier Adventure** ⭐ <https://robsbaer.github.io/monte25/WiFi-Masters/tier-adventure.html>
 - 🗼 **Tower Defense:** <https://robsbaer.github.io/monte25/WiFi-Masters/tower-defense.html>
 - 🧠 **Wer weiß denn sowas:** <https://robsbaer.github.io/monte25/WiFi-Masters/wer-weiss-denn-sowas.html>
 - 🌪️ **Windrad Klettern:** <https://robsbaer.github.io/monte25/WiFi-Masters/windrad-klettern.html>
@@ -70,7 +72,8 @@ Die Spiele des Teams WiFi-Masters können direkt im Browser gespielt werden:
 ```
 ├── ball.html               # Springender Ball (p5.js)
 ├── teams.html              # Teamgenerator
-├── grow-garden.html        # Garten-Wachstums-Spiel
+├── jumpnrun.html           # Jump'n'run Beispiel
+├── tower-defense.html      # Tower Defense Beispiel
 ├── Champion-League/        # Spiele vom Team Champion-League
 ├── Cloud-Champions/        # Spiele vom Team Cloud-Champions
 ├── Multiverse-Masters/     # Spiele vom Team Multiverse-Masters
@@ -82,7 +85,7 @@ Die Spiele des Teams WiFi-Masters können direkt im Browser gespielt werden:
 └── README.md               # Diese Datei
 ```
 
-## 🚀 Start
+## 🚀 Weiterprogrammieren
 1. **Code von GitHub herunterladen:**
    - Gehe zu <https://github.com/robsbaer/monte25>
    - Klicke auf den grünen Button „Code" und wähle „Download ZIP"
